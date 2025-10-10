@@ -1,5 +1,6 @@
 /// CPU Flags register
 #[derive(Debug, Clone, Copy)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Flags {
     pub z: bool, // Zero flag
     pub n: bool, // Subtraction flag (BCD)
@@ -69,19 +70,19 @@ impl Registers {
 
     // 16-bit register pair getters
     pub fn af(&self) -> u16 {
-        ((self.a as u16) << 8) | (self.f.to_u8() as u16)
+        (u16::from(self.a) << 8) | u16::from(self.f.to_u8())
     }
 
     pub fn bc(&self) -> u16 {
-        ((self.b as u16) << 8) | (self.c as u16)
+        (u16::from(self.b) << 8) | u16::from(self.c)
     }
 
     pub fn de(&self) -> u16 {
-        ((self.d as u16) << 8) | (self.e as u16)
+        (u16::from(self.d) << 8) | u16::from(self.e)
     }
 
     pub fn hl(&self) -> u16 {
-        ((self.h as u16) << 8) | (self.l as u16)
+        (u16::from(self.h) << 8) | u16::from(self.l)
     }
 
     // 16-bit register pair setters

@@ -548,7 +548,6 @@ impl Cpu {
     }
 
     // JR n - Relative jump by signed 8-bit offset
-
     fn jr_n(&mut self, memory: &crate::memory::Memory) -> u8 {
         let offset_16 = i16::from(
             // Game Boy JR instruction stores signed offset as a byte in memory.
@@ -557,7 +556,7 @@ impl Cpu {
             #[allow(clippy::cast_possible_wrap)]
             {
                 self.fetch_byte(memory) as i8
-            }
+            },
         );
 
         // Cast to u16 preserves the two's complement bit pattern.
