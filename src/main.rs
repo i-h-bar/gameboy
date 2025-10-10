@@ -234,4 +234,114 @@ mod tests {
         gb.cpu.execute(&mut gb.memory);
         assert_eq!(gb.cpu.pc, 0x0200); // 0x0200 + 2 - 2 = 0x0200 (infinite loop)
     }
+
+    #[test]
+    fn test_jr_z_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.z = true; // Set zero flag
+        gb.memory.write_byte(0x0100, 0x28); // JR Z, n
+        gb.memory.write_byte(0x0101, 0x10); // Jump forward 16 bytes
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12); // Taken
+        assert_eq!(gb.cpu.pc, 0x0112);
+    }
+
+    #[test]
+    fn test_jr_z_not_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.z = false; // Clear zero flag
+        gb.memory.write_byte(0x0100, 0x28); // JR Z, n
+        gb.memory.write_byte(0x0101, 0x10);
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8); // Not taken
+        assert_eq!(gb.cpu.pc, 0x0102); // Just skips the offset byte
+    }
+
+    #[test]
+    fn test_jr_nz_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.z = false; // Clear zero flag
+        gb.memory.write_byte(0x0100, 0x20); // JR NZ, n
+        gb.memory.write_byte(0x0101, 0x05);
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12); // Taken
+        assert_eq!(gb.cpu.pc, 0x0107);
+    }
+
+    #[test]
+    fn test_jr_nz_not_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.z = true; // Set zero flag
+        gb.memory.write_byte(0x0100, 0x20); // JR NZ, n
+        gb.memory.write_byte(0x0101, 0x05);
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8); // Not taken
+        assert_eq!(gb.cpu.pc, 0x0102);
+    }
+
+    #[test]
+    fn test_jr_c_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.c = true; // Set carry flag
+        gb.memory.write_byte(0x0100, 0x38); // JR C, n
+        gb.memory.write_byte(0x0101, 0xFE as u8); // -2
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12); // Taken
+        assert_eq!(gb.cpu.pc, 0x0100);
+    }
+
+    #[test]
+    fn test_jr_nc_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.c = false; // Clear carry flag
+        gb.memory.write_byte(0x0100, 0x30); // JR NC, n
+        gb.memory.write_byte(0x0101, 0x20);
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12); // Taken
+        assert_eq!(gb.cpu.pc, 0x0122);
+    }
+
+    #[test]
+    fn test_jp_z_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.z = true; // Set zero flag
+        gb.memory.write_byte(0x0100, 0xCA); // JP Z, nn
+        gb.memory.write_word(0x0101, 0x8000);
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 16); // Taken
+        assert_eq!(gb.cpu.pc, 0x8000);
+    }
+
+    #[test]
+    fn test_jp_z_not_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.z = false; // Clear zero flag
+        gb.memory.write_byte(0x0100, 0xCA); // JP Z, nn
+        gb.memory.write_word(0x0101, 0x8000);
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12); // Not taken
+        assert_eq!(gb.cpu.pc, 0x0103); // Skips the address bytes
+    }
+
+    #[test]
+    fn test_jp_nz_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.z = false; // Clear zero flag
+        gb.memory.write_byte(0x0100, 0xC2); // JP NZ, nn
+        gb.memory.write_word(0x0101, 0x4000);
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 16); // Taken
+        assert_eq!(gb.cpu.pc, 0x4000);
+    }
+
+    #[test]
+    fn test_jp_c_not_taken() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.c = false; // Clear carry flag
+        gb.memory.write_byte(0x0100, 0xDA); // JP C, nn
+        gb.memory.write_word(0x0101, 0x5000);
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12); // Not taken
+        assert_eq!(gb.cpu.pc, 0x0103);
+    }
 }

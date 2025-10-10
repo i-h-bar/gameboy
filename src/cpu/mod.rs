@@ -568,6 +568,130 @@ impl Cpu {
         }
         12
     }
+
+    // JR Z, n - Relative jump if Zero flag is set
+    fn jr_z(&mut self, memory: &crate::memory::Memory) -> u8 {
+        let offset_16 = i16::from(
+            #[allow(clippy::cast_possible_wrap)]
+            {
+                self.fetch_byte(memory) as i8
+            },
+        );
+
+        if self.registers.f.z {
+            #[allow(clippy::cast_sign_loss)]
+            {
+                self.pc = self.pc.wrapping_add(offset_16 as u16);
+            }
+            12 // Taken
+        } else {
+            8 // Not taken
+        }
+    }
+
+    // JR NZ, n - Relative jump if Zero flag is not set
+    fn jr_nz(&mut self, memory: &crate::memory::Memory) -> u8 {
+        let offset_16 = i16::from(
+            #[allow(clippy::cast_possible_wrap)]
+            {
+                self.fetch_byte(memory) as i8
+            },
+        );
+
+        if self.registers.f.z {
+            8 // Not taken
+        } else {
+            #[allow(clippy::cast_sign_loss)]
+            {
+                self.pc = self.pc.wrapping_add(offset_16 as u16);
+            }
+            12 // Taken
+        }
+    }
+
+    // JR C, n - Relative jump if Carry flag is set
+    fn jr_c(&mut self, memory: &crate::memory::Memory) -> u8 {
+        let offset_16 = i16::from(
+            #[allow(clippy::cast_possible_wrap)]
+            {
+                self.fetch_byte(memory) as i8
+            },
+        );
+
+        if self.registers.f.c {
+            #[allow(clippy::cast_sign_loss)]
+            {
+                self.pc = self.pc.wrapping_add(offset_16 as u16);
+            }
+            12 // Taken
+        } else {
+            8 // Not taken
+        }
+    }
+
+    // JR NC, n - Relative jump if Carry flag is not set
+    fn jr_nc(&mut self, memory: &crate::memory::Memory) -> u8 {
+        let offset_16 = i16::from(
+            #[allow(clippy::cast_possible_wrap)]
+            {
+                self.fetch_byte(memory) as i8
+            },
+        );
+
+        if self.registers.f.c {
+            8 // Not taken
+        } else {
+            #[allow(clippy::cast_sign_loss)]
+            {
+                self.pc = self.pc.wrapping_add(offset_16 as u16);
+            }
+            12 // Taken
+        }
+    }
+
+    // JP Z, nn - Absolute jump if Zero flag is set
+    fn jp_z(&mut self, memory: &crate::memory::Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        if self.registers.f.z {
+            self.pc = addr;
+            16 // Taken
+        } else {
+            12 // Not taken
+        }
+    }
+
+    // JP NZ, nn - Absolute jump if Zero flag is not set
+    fn jp_nz(&mut self, memory: &crate::memory::Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        if self.registers.f.z {
+            12 // Not taken
+        } else {
+            self.pc = addr;
+            16 // Taken
+        }
+    }
+
+    // JP C, nn - Absolute jump if Carry flag is set
+    fn jp_c(&mut self, memory: &crate::memory::Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        if self.registers.f.c {
+            self.pc = addr;
+            16 // Taken
+        } else {
+            12 // Not taken
+        }
+    }
+
+    // JP NC, nn - Absolute jump if Carry flag is not set
+    fn jp_nc(&mut self, memory: &crate::memory::Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        if self.registers.f.c {
+            12 // Not taken
+        } else {
+            self.pc = addr;
+            16 // Taken
+        }
+    }
 }
 
 impl Default for Cpu {

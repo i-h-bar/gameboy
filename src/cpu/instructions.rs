@@ -139,6 +139,18 @@ impl Cpu {
             0xC3 => self.jp_nn(memory),
             0x18 => self.jr_n(memory),
 
+            // Conditional relative jumps
+            0x28 => self.jr_z(memory),
+            0x20 => self.jr_nz(memory),
+            0x38 => self.jr_c(memory),
+            0x30 => self.jr_nc(memory),
+
+            // Conditional absolute jumps
+            0xCA => self.jp_z(memory),
+            0xC2 => self.jp_nz(memory),
+            0xDA => self.jp_c(memory),
+            0xD2 => self.jp_nc(memory),
+
             _ => panic!(
                 "Unimplemented opcode: 0x{:02X} at PC: 0x{:04X}",
                 opcode,
