@@ -197,49 +197,49 @@ impl Cpu {
     }
 
     // LD (HL), r - Store to memory at HL (8 cycles each)
-    fn ld_hl_a(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn ld_hl_a(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         memory.write_byte(addr, self.registers.a);
         8
     }
 
-    fn ld_hl_b(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn ld_hl_b(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         memory.write_byte(addr, self.registers.b);
         8
     }
 
-    fn ld_hl_c(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn ld_hl_c(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         memory.write_byte(addr, self.registers.c);
         8
     }
 
-    fn ld_hl_d(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn ld_hl_d(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         memory.write_byte(addr, self.registers.d);
         8
     }
 
-    fn ld_hl_e(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn ld_hl_e(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         memory.write_byte(addr, self.registers.e);
         8
     }
 
-    fn ld_hl_h(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn ld_hl_h(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         memory.write_byte(addr, self.registers.h);
         8
     }
 
-    fn ld_hl_l(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn ld_hl_l(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         memory.write_byte(addr, self.registers.l);
         8
     }
 
-    fn ld_hl_n(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn ld_hl_n(&mut self, memory: &mut Memory) -> u8 {
         let value = self.fetch_byte(memory);
         let addr = self.registers.hl();
         memory.write_byte(addr, value);
@@ -414,7 +414,7 @@ impl Cpu {
         4
     }
 
-    fn inc_hl(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn inc_hl(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         let value = memory.read_byte(addr);
         self.registers.f.h = (value & 0x0F) == 0x0F;
@@ -483,7 +483,7 @@ impl Cpu {
         4
     }
 
-    fn dec_hl(&mut self, memory: &mut crate::memory::Memory) -> u8 {
+    fn dec_hl(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.registers.hl();
         let value = memory.read_byte(addr);
         self.registers.f.h = (value & 0x0F) == 0x00;
@@ -709,13 +709,34 @@ impl Cpu {
         4
     }
 
-    fn add_a_a(&mut self) -> u8 { let v = self.registers.a; self.add_a(v) }
-    fn add_a_b(&mut self) -> u8 { let v = self.registers.b; self.add_a(v) }
-    fn add_a_c(&mut self) -> u8 { let v = self.registers.c; self.add_a(v) }
-    fn add_a_d(&mut self) -> u8 { let v = self.registers.d; self.add_a(v) }
-    fn add_a_e(&mut self) -> u8 { let v = self.registers.e; self.add_a(v) }
-    fn add_a_h(&mut self) -> u8 { let v = self.registers.h; self.add_a(v) }
-    fn add_a_l(&mut self) -> u8 { let v = self.registers.l; self.add_a(v) }
+    fn add_a_a(&mut self) -> u8 {
+        let v = self.registers.a;
+        self.add_a(v)
+    }
+    fn add_a_b(&mut self) -> u8 {
+        let v = self.registers.b;
+        self.add_a(v)
+    }
+    fn add_a_c(&mut self) -> u8 {
+        let v = self.registers.c;
+        self.add_a(v)
+    }
+    fn add_a_d(&mut self) -> u8 {
+        let v = self.registers.d;
+        self.add_a(v)
+    }
+    fn add_a_e(&mut self) -> u8 {
+        let v = self.registers.e;
+        self.add_a(v)
+    }
+    fn add_a_h(&mut self) -> u8 {
+        let v = self.registers.h;
+        self.add_a(v)
+    }
+    fn add_a_l(&mut self) -> u8 {
+        let v = self.registers.l;
+        self.add_a(v)
+    }
 
     fn add_a_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
@@ -745,13 +766,34 @@ impl Cpu {
         4
     }
 
-    fn sub_a_a(&mut self) -> u8 { let v = self.registers.a; self.sub_a(v) }
-    fn sub_a_b(&mut self) -> u8 { let v = self.registers.b; self.sub_a(v) }
-    fn sub_a_c(&mut self) -> u8 { let v = self.registers.c; self.sub_a(v) }
-    fn sub_a_d(&mut self) -> u8 { let v = self.registers.d; self.sub_a(v) }
-    fn sub_a_e(&mut self) -> u8 { let v = self.registers.e; self.sub_a(v) }
-    fn sub_a_h(&mut self) -> u8 { let v = self.registers.h; self.sub_a(v) }
-    fn sub_a_l(&mut self) -> u8 { let v = self.registers.l; self.sub_a(v) }
+    fn sub_a_a(&mut self) -> u8 {
+        let v = self.registers.a;
+        self.sub_a(v)
+    }
+    fn sub_a_b(&mut self) -> u8 {
+        let v = self.registers.b;
+        self.sub_a(v)
+    }
+    fn sub_a_c(&mut self) -> u8 {
+        let v = self.registers.c;
+        self.sub_a(v)
+    }
+    fn sub_a_d(&mut self) -> u8 {
+        let v = self.registers.d;
+        self.sub_a(v)
+    }
+    fn sub_a_e(&mut self) -> u8 {
+        let v = self.registers.e;
+        self.sub_a(v)
+    }
+    fn sub_a_h(&mut self) -> u8 {
+        let v = self.registers.h;
+        self.sub_a(v)
+    }
+    fn sub_a_l(&mut self) -> u8 {
+        let v = self.registers.l;
+        self.sub_a(v)
+    }
 
     fn sub_a_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
@@ -777,13 +819,34 @@ impl Cpu {
         4
     }
 
-    fn and_a_a(&mut self) -> u8 { let v = self.registers.a; self.and_a(v) }
-    fn and_a_b(&mut self) -> u8 { let v = self.registers.b; self.and_a(v) }
-    fn and_a_c(&mut self) -> u8 { let v = self.registers.c; self.and_a(v) }
-    fn and_a_d(&mut self) -> u8 { let v = self.registers.d; self.and_a(v) }
-    fn and_a_e(&mut self) -> u8 { let v = self.registers.e; self.and_a(v) }
-    fn and_a_h(&mut self) -> u8 { let v = self.registers.h; self.and_a(v) }
-    fn and_a_l(&mut self) -> u8 { let v = self.registers.l; self.and_a(v) }
+    fn and_a_a(&mut self) -> u8 {
+        let v = self.registers.a;
+        self.and_a(v)
+    }
+    fn and_a_b(&mut self) -> u8 {
+        let v = self.registers.b;
+        self.and_a(v)
+    }
+    fn and_a_c(&mut self) -> u8 {
+        let v = self.registers.c;
+        self.and_a(v)
+    }
+    fn and_a_d(&mut self) -> u8 {
+        let v = self.registers.d;
+        self.and_a(v)
+    }
+    fn and_a_e(&mut self) -> u8 {
+        let v = self.registers.e;
+        self.and_a(v)
+    }
+    fn and_a_h(&mut self) -> u8 {
+        let v = self.registers.h;
+        self.and_a(v)
+    }
+    fn and_a_l(&mut self) -> u8 {
+        let v = self.registers.l;
+        self.and_a(v)
+    }
 
     fn and_a_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
@@ -809,13 +872,34 @@ impl Cpu {
         4
     }
 
-    fn or_a_a(&mut self) -> u8 { let v = self.registers.a; self.or_a(v) }
-    fn or_a_b(&mut self) -> u8 { let v = self.registers.b; self.or_a(v) }
-    fn or_a_c(&mut self) -> u8 { let v = self.registers.c; self.or_a(v) }
-    fn or_a_d(&mut self) -> u8 { let v = self.registers.d; self.or_a(v) }
-    fn or_a_e(&mut self) -> u8 { let v = self.registers.e; self.or_a(v) }
-    fn or_a_h(&mut self) -> u8 { let v = self.registers.h; self.or_a(v) }
-    fn or_a_l(&mut self) -> u8 { let v = self.registers.l; self.or_a(v) }
+    fn or_a_a(&mut self) -> u8 {
+        let v = self.registers.a;
+        self.or_a(v)
+    }
+    fn or_a_b(&mut self) -> u8 {
+        let v = self.registers.b;
+        self.or_a(v)
+    }
+    fn or_a_c(&mut self) -> u8 {
+        let v = self.registers.c;
+        self.or_a(v)
+    }
+    fn or_a_d(&mut self) -> u8 {
+        let v = self.registers.d;
+        self.or_a(v)
+    }
+    fn or_a_e(&mut self) -> u8 {
+        let v = self.registers.e;
+        self.or_a(v)
+    }
+    fn or_a_h(&mut self) -> u8 {
+        let v = self.registers.h;
+        self.or_a(v)
+    }
+    fn or_a_l(&mut self) -> u8 {
+        let v = self.registers.l;
+        self.or_a(v)
+    }
 
     fn or_a_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
@@ -843,13 +927,34 @@ impl Cpu {
         4
     }
 
-    fn cp_a_a(&mut self) -> u8 { let v = self.registers.a; self.cp_a(v) }
-    fn cp_a_b(&mut self) -> u8 { let v = self.registers.b; self.cp_a(v) }
-    fn cp_a_c(&mut self) -> u8 { let v = self.registers.c; self.cp_a(v) }
-    fn cp_a_d(&mut self) -> u8 { let v = self.registers.d; self.cp_a(v) }
-    fn cp_a_e(&mut self) -> u8 { let v = self.registers.e; self.cp_a(v) }
-    fn cp_a_h(&mut self) -> u8 { let v = self.registers.h; self.cp_a(v) }
-    fn cp_a_l(&mut self) -> u8 { let v = self.registers.l; self.cp_a(v) }
+    fn cp_a_a(&mut self) -> u8 {
+        let v = self.registers.a;
+        self.cp_a(v)
+    }
+    fn cp_a_b(&mut self) -> u8 {
+        let v = self.registers.b;
+        self.cp_a(v)
+    }
+    fn cp_a_c(&mut self) -> u8 {
+        let v = self.registers.c;
+        self.cp_a(v)
+    }
+    fn cp_a_d(&mut self) -> u8 {
+        let v = self.registers.d;
+        self.cp_a(v)
+    }
+    fn cp_a_e(&mut self) -> u8 {
+        let v = self.registers.e;
+        self.cp_a(v)
+    }
+    fn cp_a_h(&mut self) -> u8 {
+        let v = self.registers.h;
+        self.cp_a(v)
+    }
+    fn cp_a_l(&mut self) -> u8 {
+        let v = self.registers.l;
+        self.cp_a(v)
+    }
 
     fn cp_a_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
