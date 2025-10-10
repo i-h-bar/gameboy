@@ -23,6 +23,7 @@ impl Cpu {
     }
 
     /// Execute a single opcode
+    #[allow(clippy::too_many_lines)]
     fn execute_opcode(&mut self, opcode: u8, memory: &mut Memory) -> u8 {
         match opcode {
             // NOP
@@ -150,6 +151,61 @@ impl Cpu {
             0xC2 => self.jp_nz(memory),
             0xDA => self.jp_c(memory),
             0xD2 => self.jp_nc(memory),
+
+            // ADD A, r
+            0x87 => self.add_a_a(),
+            0x80 => self.add_a_b(),
+            0x81 => self.add_a_c(),
+            0x82 => self.add_a_d(),
+            0x83 => self.add_a_e(),
+            0x84 => self.add_a_h(),
+            0x85 => self.add_a_l(),
+            0x86 => self.add_a_hl(memory),
+            0xC6 => self.add_a_n(memory),
+
+            // SUB A, r
+            0x97 => self.sub_a_a(),
+            0x90 => self.sub_a_b(),
+            0x91 => self.sub_a_c(),
+            0x92 => self.sub_a_d(),
+            0x93 => self.sub_a_e(),
+            0x94 => self.sub_a_h(),
+            0x95 => self.sub_a_l(),
+            0x96 => self.sub_a_hl(memory),
+            0xD6 => self.sub_a_n(memory),
+
+            // AND A, r
+            0xA7 => self.and_a_a(),
+            0xA0 => self.and_a_b(),
+            0xA1 => self.and_a_c(),
+            0xA2 => self.and_a_d(),
+            0xA3 => self.and_a_e(),
+            0xA4 => self.and_a_h(),
+            0xA5 => self.and_a_l(),
+            0xA6 => self.and_a_hl(memory),
+            0xE6 => self.and_a_n(memory),
+
+            // OR A, r
+            0xB7 => self.or_a_a(),
+            0xB0 => self.or_a_b(),
+            0xB1 => self.or_a_c(),
+            0xB2 => self.or_a_d(),
+            0xB3 => self.or_a_e(),
+            0xB4 => self.or_a_h(),
+            0xB5 => self.or_a_l(),
+            0xB6 => self.or_a_hl(memory),
+            0xF6 => self.or_a_n(memory),
+
+            // CP A, r
+            0xBF => self.cp_a_a(),
+            0xB8 => self.cp_a_b(),
+            0xB9 => self.cp_a_c(),
+            0xBA => self.cp_a_d(),
+            0xBB => self.cp_a_e(),
+            0xBC => self.cp_a_h(),
+            0xBD => self.cp_a_l(),
+            0xBE => self.cp_a_hl(memory),
+            0xFE => self.cp_a_n(memory),
 
             _ => panic!(
                 "Unimplemented opcode: 0x{:02X} at PC: 0x{:04X}",

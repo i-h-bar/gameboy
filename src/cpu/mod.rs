@@ -1,4 +1,5 @@
 use crate::cpu::registers::Registers;
+use crate::memory::Memory;
 
 mod instructions;
 pub mod registers;
@@ -117,79 +118,79 @@ impl Cpu {
     }
 
     // LD r, n - Load immediate 8-bit value (8 cycles each)
-    fn ld_a_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_a_n(&mut self, memory: &Memory) -> u8 {
         self.registers.a = self.fetch_byte(memory);
         8
     }
 
-    fn ld_b_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_b_n(&mut self, memory: &Memory) -> u8 {
         self.registers.b = self.fetch_byte(memory);
         8
     }
 
-    fn ld_c_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_c_n(&mut self, memory: &Memory) -> u8 {
         self.registers.c = self.fetch_byte(memory);
         8
     }
 
-    fn ld_d_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_d_n(&mut self, memory: &Memory) -> u8 {
         self.registers.d = self.fetch_byte(memory);
         8
     }
 
-    fn ld_e_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_e_n(&mut self, memory: &Memory) -> u8 {
         self.registers.e = self.fetch_byte(memory);
         8
     }
 
-    fn ld_h_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_h_n(&mut self, memory: &Memory) -> u8 {
         self.registers.h = self.fetch_byte(memory);
         8
     }
 
-    fn ld_l_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_l_n(&mut self, memory: &Memory) -> u8 {
         self.registers.l = self.fetch_byte(memory);
         8
     }
 
     // LD r, (HL) - Load from memory at HL (8 cycles each)
-    fn ld_a_hl(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_a_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
         self.registers.a = memory.read_byte(addr);
         8
     }
 
-    fn ld_b_hl(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_b_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
         self.registers.b = memory.read_byte(addr);
         8
     }
 
-    fn ld_c_hl(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_c_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
         self.registers.c = memory.read_byte(addr);
         8
     }
 
-    fn ld_d_hl(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_d_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
         self.registers.d = memory.read_byte(addr);
         8
     }
 
-    fn ld_e_hl(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_e_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
         self.registers.e = memory.read_byte(addr);
         8
     }
 
-    fn ld_h_hl(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_h_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
         self.registers.h = memory.read_byte(addr);
         8
     }
 
-    fn ld_l_hl(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_l_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
         self.registers.l = memory.read_byte(addr);
         8
@@ -246,25 +247,25 @@ impl Cpu {
     }
 
     // 16-bit loads (12 cycles each)
-    fn ld_bc_nn(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_bc_nn(&mut self, memory: &Memory) -> u8 {
         let value = self.fetch_word(memory);
         self.registers.set_bc(value);
         12
     }
 
-    fn ld_de_nn(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_de_nn(&mut self, memory: &Memory) -> u8 {
         let value = self.fetch_word(memory);
         self.registers.set_de(value);
         12
     }
 
-    fn ld_hl_nn(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_hl_nn(&mut self, memory: &Memory) -> u8 {
         let value = self.fetch_word(memory);
         self.registers.set_hl(value);
         12
     }
 
-    fn ld_sp_nn(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn ld_sp_nn(&mut self, memory: &Memory) -> u8 {
         self.sp = self.fetch_word(memory);
         12
     }
@@ -334,7 +335,7 @@ impl Cpu {
         4
     }
 
-    fn xor_hl(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn xor_hl(&mut self, memory: &Memory) -> u8 {
         let addr = self.registers.hl();
         let value = memory.read_byte(addr);
         self.registers.a ^= value;
@@ -345,7 +346,7 @@ impl Cpu {
         8
     }
 
-    fn xor_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn xor_n(&mut self, memory: &Memory) -> u8 {
         let value = self.fetch_byte(memory);
         self.registers.a ^= value;
         self.registers.f.z = self.registers.a == 0;
@@ -542,13 +543,13 @@ impl Cpu {
     }
 
     // JP nn - Absolute jump to 16-bit address
-    fn jp_nn(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jp_nn(&mut self, memory: &Memory) -> u8 {
         self.pc = self.fetch_word(memory);
         16
     }
 
     // JR n - Relative jump by signed 8-bit offset
-    fn jr_n(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jr_n(&mut self, memory: &Memory) -> u8 {
         let offset_16 = i16::from(
             // Game Boy JR instruction stores signed offset as a byte in memory.
             // Values 0x80-0xFF represent negative offsets in two's complement.
@@ -570,7 +571,7 @@ impl Cpu {
     }
 
     // JR Z, n - Relative jump if Zero flag is set
-    fn jr_z(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jr_z(&mut self, memory: &Memory) -> u8 {
         let offset_16 = i16::from(
             #[allow(clippy::cast_possible_wrap)]
             {
@@ -590,7 +591,7 @@ impl Cpu {
     }
 
     // JR NZ, n - Relative jump if Zero flag is not set
-    fn jr_nz(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jr_nz(&mut self, memory: &Memory) -> u8 {
         let offset_16 = i16::from(
             #[allow(clippy::cast_possible_wrap)]
             {
@@ -610,7 +611,7 @@ impl Cpu {
     }
 
     // JR C, n - Relative jump if Carry flag is set
-    fn jr_c(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jr_c(&mut self, memory: &Memory) -> u8 {
         let offset_16 = i16::from(
             #[allow(clippy::cast_possible_wrap)]
             {
@@ -630,7 +631,7 @@ impl Cpu {
     }
 
     // JR NC, n - Relative jump if Carry flag is not set
-    fn jr_nc(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jr_nc(&mut self, memory: &Memory) -> u8 {
         let offset_16 = i16::from(
             #[allow(clippy::cast_possible_wrap)]
             {
@@ -650,7 +651,7 @@ impl Cpu {
     }
 
     // JP Z, nn - Absolute jump if Zero flag is set
-    fn jp_z(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jp_z(&mut self, memory: &Memory) -> u8 {
         let addr = self.fetch_word(memory);
         if self.registers.f.z {
             self.pc = addr;
@@ -661,7 +662,7 @@ impl Cpu {
     }
 
     // JP NZ, nn - Absolute jump if Zero flag is not set
-    fn jp_nz(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jp_nz(&mut self, memory: &Memory) -> u8 {
         let addr = self.fetch_word(memory);
         if self.registers.f.z {
             12 // Not taken
@@ -672,7 +673,7 @@ impl Cpu {
     }
 
     // JP C, nn - Absolute jump if Carry flag is set
-    fn jp_c(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jp_c(&mut self, memory: &Memory) -> u8 {
         let addr = self.fetch_word(memory);
         if self.registers.f.c {
             self.pc = addr;
@@ -683,7 +684,7 @@ impl Cpu {
     }
 
     // JP NC, nn - Absolute jump if Carry flag is not set
-    fn jp_nc(&mut self, memory: &crate::memory::Memory) -> u8 {
+    fn jp_nc(&mut self, memory: &Memory) -> u8 {
         let addr = self.fetch_word(memory);
         if self.registers.f.c {
             12 // Not taken
@@ -691,6 +692,176 @@ impl Cpu {
             self.pc = addr;
             16 // Taken
         }
+    }
+
+    // ADD A, r - Add register to A
+    // Flags: Z if result is 0, N=0, H if carry from bit 3, C if carry from bit 7
+    fn add_a(&mut self, value: u8) -> u8 {
+        let a = self.registers.a;
+        let result = a.wrapping_add(value);
+
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = (a & 0x0F) + (value & 0x0F) > 0x0F;
+        self.registers.f.c = u16::from(a) + u16::from(value) > 0xFF;
+
+        self.registers.a = result;
+        4
+    }
+
+    fn add_a_a(&mut self) -> u8 { let v = self.registers.a; self.add_a(v) }
+    fn add_a_b(&mut self) -> u8 { let v = self.registers.b; self.add_a(v) }
+    fn add_a_c(&mut self) -> u8 { let v = self.registers.c; self.add_a(v) }
+    fn add_a_d(&mut self) -> u8 { let v = self.registers.d; self.add_a(v) }
+    fn add_a_e(&mut self) -> u8 { let v = self.registers.e; self.add_a(v) }
+    fn add_a_h(&mut self) -> u8 { let v = self.registers.h; self.add_a(v) }
+    fn add_a_l(&mut self) -> u8 { let v = self.registers.l; self.add_a(v) }
+
+    fn add_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        self.add_a(value);
+        8
+    }
+
+    fn add_a_n(&mut self, memory: &Memory) -> u8 {
+        let value = self.fetch_byte(memory);
+        self.add_a(value);
+        8
+    }
+
+    // SUB A, r - Subtract register from A
+    // Flags: Z if result is 0, N=1, H if borrow from bit 4, C if borrow
+    fn sub_a(&mut self, value: u8) -> u8 {
+        let a = self.registers.a;
+        let result = a.wrapping_sub(value);
+
+        self.registers.f.z = result == 0;
+        self.registers.f.n = true;
+        self.registers.f.h = (a & 0x0F) < (value & 0x0F);
+        self.registers.f.c = a < value;
+
+        self.registers.a = result;
+        4
+    }
+
+    fn sub_a_a(&mut self) -> u8 { let v = self.registers.a; self.sub_a(v) }
+    fn sub_a_b(&mut self) -> u8 { let v = self.registers.b; self.sub_a(v) }
+    fn sub_a_c(&mut self) -> u8 { let v = self.registers.c; self.sub_a(v) }
+    fn sub_a_d(&mut self) -> u8 { let v = self.registers.d; self.sub_a(v) }
+    fn sub_a_e(&mut self) -> u8 { let v = self.registers.e; self.sub_a(v) }
+    fn sub_a_h(&mut self) -> u8 { let v = self.registers.h; self.sub_a(v) }
+    fn sub_a_l(&mut self) -> u8 { let v = self.registers.l; self.sub_a(v) }
+
+    fn sub_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        self.sub_a(value);
+        8
+    }
+
+    fn sub_a_n(&mut self, memory: &Memory) -> u8 {
+        let value = self.fetch_byte(memory);
+        self.sub_a(value);
+        8
+    }
+
+    // AND A, r - Bitwise AND with A
+    // Flags: Z if result is 0, N=0, H=1, C=0
+    fn and_a(&mut self, value: u8) -> u8 {
+        self.registers.a &= value;
+        self.registers.f.z = self.registers.a == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = true;
+        self.registers.f.c = false;
+        4
+    }
+
+    fn and_a_a(&mut self) -> u8 { let v = self.registers.a; self.and_a(v) }
+    fn and_a_b(&mut self) -> u8 { let v = self.registers.b; self.and_a(v) }
+    fn and_a_c(&mut self) -> u8 { let v = self.registers.c; self.and_a(v) }
+    fn and_a_d(&mut self) -> u8 { let v = self.registers.d; self.and_a(v) }
+    fn and_a_e(&mut self) -> u8 { let v = self.registers.e; self.and_a(v) }
+    fn and_a_h(&mut self) -> u8 { let v = self.registers.h; self.and_a(v) }
+    fn and_a_l(&mut self) -> u8 { let v = self.registers.l; self.and_a(v) }
+
+    fn and_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        self.and_a(value);
+        8
+    }
+
+    fn and_a_n(&mut self, memory: &Memory) -> u8 {
+        let value = self.fetch_byte(memory);
+        self.and_a(value);
+        8
+    }
+
+    // OR A, r - Bitwise OR with A
+    // Flags: Z if result is 0, N=0, H=0, C=0
+    fn or_a(&mut self, value: u8) -> u8 {
+        self.registers.a |= value;
+        self.registers.f.z = self.registers.a == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = false;
+        4
+    }
+
+    fn or_a_a(&mut self) -> u8 { let v = self.registers.a; self.or_a(v) }
+    fn or_a_b(&mut self) -> u8 { let v = self.registers.b; self.or_a(v) }
+    fn or_a_c(&mut self) -> u8 { let v = self.registers.c; self.or_a(v) }
+    fn or_a_d(&mut self) -> u8 { let v = self.registers.d; self.or_a(v) }
+    fn or_a_e(&mut self) -> u8 { let v = self.registers.e; self.or_a(v) }
+    fn or_a_h(&mut self) -> u8 { let v = self.registers.h; self.or_a(v) }
+    fn or_a_l(&mut self) -> u8 { let v = self.registers.l; self.or_a(v) }
+
+    fn or_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        self.or_a(value);
+        8
+    }
+
+    fn or_a_n(&mut self, memory: &Memory) -> u8 {
+        let value = self.fetch_byte(memory);
+        self.or_a(value);
+        8
+    }
+
+    // CP A, r - Compare A with register (SUB without storing result)
+    // Flags: Z if equal, N=1, H if borrow from bit 4, C if A < value
+    fn cp_a(&mut self, value: u8) -> u8 {
+        let a = self.registers.a;
+        let result = a.wrapping_sub(value);
+
+        self.registers.f.z = result == 0;
+        self.registers.f.n = true;
+        self.registers.f.h = (a & 0x0F) < (value & 0x0F);
+        self.registers.f.c = a < value;
+        4
+    }
+
+    fn cp_a_a(&mut self) -> u8 { let v = self.registers.a; self.cp_a(v) }
+    fn cp_a_b(&mut self) -> u8 { let v = self.registers.b; self.cp_a(v) }
+    fn cp_a_c(&mut self) -> u8 { let v = self.registers.c; self.cp_a(v) }
+    fn cp_a_d(&mut self) -> u8 { let v = self.registers.d; self.cp_a(v) }
+    fn cp_a_e(&mut self) -> u8 { let v = self.registers.e; self.cp_a(v) }
+    fn cp_a_h(&mut self) -> u8 { let v = self.registers.h; self.cp_a(v) }
+    fn cp_a_l(&mut self) -> u8 { let v = self.registers.l; self.cp_a(v) }
+
+    fn cp_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        self.cp_a(value);
+        8
+    }
+
+    fn cp_a_n(&mut self, memory: &Memory) -> u8 {
+        let value = self.fetch_byte(memory);
+        self.cp_a(value);
+        8
     }
 }
 

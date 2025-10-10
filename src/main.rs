@@ -344,4 +344,181 @@ mod tests {
         assert_eq!(cycles, 12); // Not taken
         assert_eq!(gb.cpu.pc, 0x0103);
     }
+
+    #[test]
+    fn test_add_a_b() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x3A;
+        gb.cpu.registers.b = 0x15;
+        gb.memory.write_byte(0x0100, 0x80); // ADD A, B
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0x4F);
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.n, false);
+        assert_eq!(gb.cpu.registers.f.h, false);
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_add_a_half_carry() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x0F;
+        gb.cpu.registers.b = 0x01;
+        gb.memory.write_byte(0x0100, 0x80); // ADD A, B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x10);
+        assert_eq!(gb.cpu.registers.f.h, true); // Half carry
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_add_a_full_carry() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0xFF;
+        gb.cpu.registers.b = 0x02;
+        gb.memory.write_byte(0x0100, 0x80); // ADD A, B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x01);
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.c, true); // Carry
+        assert_eq!(gb.cpu.registers.f.h, true); // Half carry
+    }
+
+    #[test]
+    fn test_add_a_zero() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x00;
+        gb.memory.write_byte(0x0100, 0x87); // ADD A, A
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x00);
+        assert_eq!(gb.cpu.registers.f.z, true); // Zero flag
+    }
+
+    #[test]
+    fn test_sub_a_b() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x3E;
+        gb.cpu.registers.b = 0x0F;
+        gb.memory.write_byte(0x0100, 0x90); // SUB A, B
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0x2F);
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.n, true); // N always set for SUB
+        assert_eq!(gb.cpu.registers.f.h, true); // Half borrow
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_sub_a_zero() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x42;
+        gb.memory.write_byte(0x0100, 0x97); // SUB A, A
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x00);
+        assert_eq!(gb.cpu.registers.f.z, true); // Zero flag
+        assert_eq!(gb.cpu.registers.f.n, true);
+    }
+
+    #[test]
+    fn test_sub_a_borrow() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x0F;
+        gb.cpu.registers.b = 0x1F;
+        gb.memory.write_byte(0x0100, 0x90); // SUB A, B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0xF0); // Wraps around
+        assert_eq!(gb.cpu.registers.f.c, true); // Borrow
+    }
+
+    #[test]
+    fn test_and_a_b() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b11110000;
+        gb.cpu.registers.b = 0b10101010;
+        gb.memory.write_byte(0x0100, 0xA0); // AND A, B
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0b10100000);
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.n, false);
+        assert_eq!(gb.cpu.registers.f.h, true); // H always set for AND
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_and_a_zero() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b11110000;
+        gb.cpu.registers.b = 0b00001111;
+        gb.memory.write_byte(0x0100, 0xA0); // AND A, B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x00);
+        assert_eq!(gb.cpu.registers.f.z, true); // Zero flag
+        assert_eq!(gb.cpu.registers.f.h, true);
+    }
+
+    #[test]
+    fn test_or_a_b() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b11110000;
+        gb.cpu.registers.b = 0b00001111;
+        gb.memory.write_byte(0x0100, 0xB0); // OR A, B
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0b11111111);
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.n, false);
+        assert_eq!(gb.cpu.registers.f.h, false);
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_or_a_zero() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x00;
+        gb.memory.write_byte(0x0100, 0xB7); // OR A, A
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x00);
+        assert_eq!(gb.cpu.registers.f.z, true); // Zero flag
+    }
+
+    #[test]
+    fn test_cp_a_equal() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x42;
+        gb.cpu.registers.b = 0x42;
+        gb.memory.write_byte(0x0100, 0xB8); // CP A, B
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0x42); // A unchanged
+        assert_eq!(gb.cpu.registers.f.z, true); // Equal
+        assert_eq!(gb.cpu.registers.f.n, true);
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_cp_a_less_than() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x10;
+        gb.cpu.registers.b = 0x20;
+        gb.memory.write_byte(0x0100, 0xB8); // CP A, B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x10); // A unchanged
+        assert_eq!(gb.cpu.registers.f.z, false); // Not equal
+        assert_eq!(gb.cpu.registers.f.c, true); // A < B
+    }
+
+    #[test]
+    fn test_cp_a_greater_than() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x30;
+        gb.cpu.registers.b = 0x20;
+        gb.memory.write_byte(0x0100, 0xB8); // CP A, B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x30); // A unchanged
+        assert_eq!(gb.cpu.registers.f.z, false); // Not equal
+        assert_eq!(gb.cpu.registers.f.c, false); // A >= B
+    }
 }
