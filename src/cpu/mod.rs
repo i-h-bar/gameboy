@@ -1,7 +1,7 @@
 use crate::cpu::registers::Registers;
 
-pub mod registers;
 mod instructions;
+pub mod registers;
 
 pub struct Cpu {
     pub registers: Registers,
@@ -14,7 +14,7 @@ impl Cpu {
     pub fn new() -> Self {
         Self {
             registers: Registers::new(),
-            pc: 0x0100,  // Start after boot ROM
+            pc: 0x0100, // Start after boot ROM
             sp: 0xFFFE,
             halted: false,
         }
@@ -32,29 +32,89 @@ impl Cpu {
     }
 
     // LD r, r' - Load register to register (all take 4 cycles)
-    fn ld_a_a(&mut self) -> u8 { 4 }
-    fn ld_a_b(&mut self) -> u8 { self.registers.a = self.registers.b; 4 }
-    fn ld_a_c(&mut self) -> u8 { self.registers.a = self.registers.c; 4 }
-    fn ld_a_d(&mut self) -> u8 { self.registers.a = self.registers.d; 4 }
-    fn ld_a_e(&mut self) -> u8 { self.registers.a = self.registers.e; 4 }
-    fn ld_a_h(&mut self) -> u8 { self.registers.a = self.registers.h; 4 }
-    fn ld_a_l(&mut self) -> u8 { self.registers.a = self.registers.l; 4 }
+    fn ld_a_a(&mut self) -> u8 {
+        4
+    }
+    fn ld_a_b(&mut self) -> u8 {
+        self.registers.a = self.registers.b;
+        4
+    }
+    fn ld_a_c(&mut self) -> u8 {
+        self.registers.a = self.registers.c;
+        4
+    }
+    fn ld_a_d(&mut self) -> u8 {
+        self.registers.a = self.registers.d;
+        4
+    }
+    fn ld_a_e(&mut self) -> u8 {
+        self.registers.a = self.registers.e;
+        4
+    }
+    fn ld_a_h(&mut self) -> u8 {
+        self.registers.a = self.registers.h;
+        4
+    }
+    fn ld_a_l(&mut self) -> u8 {
+        self.registers.a = self.registers.l;
+        4
+    }
 
-    fn ld_b_a(&mut self) -> u8 { self.registers.b = self.registers.a; 4 }
-    fn ld_b_b(&mut self) -> u8 { 4 }
-    fn ld_b_c(&mut self) -> u8 { self.registers.b = self.registers.c; 4 }
-    fn ld_b_d(&mut self) -> u8 { self.registers.b = self.registers.d; 4 }
-    fn ld_b_e(&mut self) -> u8 { self.registers.b = self.registers.e; 4 }
-    fn ld_b_h(&mut self) -> u8 { self.registers.b = self.registers.h; 4 }
-    fn ld_b_l(&mut self) -> u8 { self.registers.b = self.registers.l; 4 }
+    fn ld_b_a(&mut self) -> u8 {
+        self.registers.b = self.registers.a;
+        4
+    }
+    fn ld_b_b(&mut self) -> u8 {
+        4
+    }
+    fn ld_b_c(&mut self) -> u8 {
+        self.registers.b = self.registers.c;
+        4
+    }
+    fn ld_b_d(&mut self) -> u8 {
+        self.registers.b = self.registers.d;
+        4
+    }
+    fn ld_b_e(&mut self) -> u8 {
+        self.registers.b = self.registers.e;
+        4
+    }
+    fn ld_b_h(&mut self) -> u8 {
+        self.registers.b = self.registers.h;
+        4
+    }
+    fn ld_b_l(&mut self) -> u8 {
+        self.registers.b = self.registers.l;
+        4
+    }
 
-    fn ld_c_a(&mut self) -> u8 { self.registers.c = self.registers.a; 4 }
-    fn ld_c_b(&mut self) -> u8 { self.registers.c = self.registers.b; 4 }
-    fn ld_c_c(&mut self) -> u8 { 4 }
-    fn ld_c_d(&mut self) -> u8 { self.registers.c = self.registers.d; 4 }
-    fn ld_c_e(&mut self) -> u8 { self.registers.c = self.registers.e; 4 }
-    fn ld_c_h(&mut self) -> u8 { self.registers.c = self.registers.h; 4 }
-    fn ld_c_l(&mut self) -> u8 { self.registers.c = self.registers.l; 4 }
+    fn ld_c_a(&mut self) -> u8 {
+        self.registers.c = self.registers.a;
+        4
+    }
+    fn ld_c_b(&mut self) -> u8 {
+        self.registers.c = self.registers.b;
+        4
+    }
+    fn ld_c_c(&mut self) -> u8 {
+        4
+    }
+    fn ld_c_d(&mut self) -> u8 {
+        self.registers.c = self.registers.d;
+        4
+    }
+    fn ld_c_e(&mut self) -> u8 {
+        self.registers.c = self.registers.e;
+        4
+    }
+    fn ld_c_h(&mut self) -> u8 {
+        self.registers.c = self.registers.h;
+        4
+    }
+    fn ld_c_l(&mut self) -> u8 {
+        self.registers.c = self.registers.l;
+        4
+    }
 
     // LD r, n - Load immediate 8-bit value (8 cycles each)
     fn ld_a_n(&mut self, memory: &crate::memory::Memory) -> u8 {
@@ -488,9 +548,25 @@ impl Cpu {
     }
 
     // JR n - Relative jump by signed 8-bit offset
+
     fn jr_n(&mut self, memory: &crate::memory::Memory) -> u8 {
-        let offset = self.fetch_byte(memory) as i8;
-        self.pc = self.pc.wrapping_add(offset as u16);
+        let offset_16 = i16::from(
+            // Game Boy JR instruction stores signed offset as a byte in memory.
+            // Values 0x80-0xFF represent negative offsets in two's complement.
+            // The "wrap" is intentional - we're reinterpreting the bit pattern.
+            #[allow(clippy::cast_possible_wrap)]
+            {
+                self.fetch_byte(memory) as i8
+            }
+        );
+
+        // Cast to u16 preserves the two's complement bit pattern.
+        // wrapping_add correctly handles both positive and negative offsets.
+        // Example: -2i16 (0xFFFE) as u16 = 0xFFFE, which wraps correctly when added.
+        #[allow(clippy::cast_sign_loss)]
+        {
+            self.pc = self.pc.wrapping_add(offset_16 as u16);
+        }
         12
     }
 }

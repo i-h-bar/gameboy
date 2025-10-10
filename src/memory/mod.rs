@@ -1,13 +1,13 @@
 const MEMORY_SIZE: usize = 0x10000; // 64KB
 
 pub struct Memory {
-    data: [u8; MEMORY_SIZE],
+    data: Vec<u8>,
 }
 
 impl Memory {
     pub fn new() -> Self {
         Self {
-            data: [0; MEMORY_SIZE],
+            data: vec![0; MEMORY_SIZE],
         }
     }
 
@@ -20,8 +20,8 @@ impl Memory {
     }
 
     pub fn read_word(&self, address: u16) -> u16 {
-        let low = self.read_byte(address) as u16;
-        let high = self.read_byte(address.wrapping_add(1)) as u16;
+        let low = u16::from(self.read_byte(address));
+        let high = u16::from(self.read_byte(address.wrapping_add(1)));
         (high << 8) | low
     }
 

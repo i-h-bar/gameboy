@@ -31,7 +31,6 @@ impl Default for GameBoy {
     }
 }
 
-
 fn main() {
     let mut game = GameBoy::default();
     game.power_on();

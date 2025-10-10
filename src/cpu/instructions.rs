@@ -139,7 +139,11 @@ impl Cpu {
             0xC3 => self.jp_nn(memory),
             0x18 => self.jr_n(memory),
 
-            _ => panic!("Unimplemented opcode: 0x{:02X} at PC: 0x{:04X}", opcode, self.pc.wrapping_sub(1)),
+            _ => panic!(
+                "Unimplemented opcode: 0x{:02X} at PC: 0x{:04X}",
+                opcode,
+                self.pc.wrapping_sub(1)
+            ),
         }
     }
 }
