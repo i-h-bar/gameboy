@@ -1036,4 +1036,240 @@ mod tests {
         assert_eq!(gb.cpu.registers.f.h, true); // Half carry from low byte
         assert_eq!(gb.cpu.registers.f.c, false);
     }
+
+    // ADC tests
+    #[test]
+    fn test_adc_a_b_no_carry() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x10;
+        gb.cpu.registers.b = 0x05;
+        gb.cpu.registers.f.c = false;
+        gb.memory.write_byte(0x0100, 0x88); // ADC A,B
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0x15);
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.n, false);
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_adc_a_b_with_carry() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x10;
+        gb.cpu.registers.b = 0x05;
+        gb.cpu.registers.f.c = true; // Carry set
+        gb.memory.write_byte(0x0100, 0x88); // ADC A,B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x16); // 0x10 + 0x05 + 1
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_adc_a_overflow() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0xFF;
+        gb.cpu.registers.b = 0x01;
+        gb.cpu.registers.f.c = true;
+        gb.memory.write_byte(0x0100, 0x88); // ADC A,B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x01); // Overflow
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.c, true); // Carry out
+        assert_eq!(gb.cpu.registers.f.h, true); // Half carry
+    }
+
+    // SBC tests
+    #[test]
+    fn test_sbc_a_b_no_carry() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x20;
+        gb.cpu.registers.b = 0x10;
+        gb.cpu.registers.f.c = false;
+        gb.memory.write_byte(0x0100, 0x98); // SBC A,B
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0x10);
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.n, true);
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_sbc_a_b_with_carry() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x20;
+        gb.cpu.registers.b = 0x10;
+        gb.cpu.registers.f.c = true; // Borrow set
+        gb.memory.write_byte(0x0100, 0x98); // SBC A,B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x0F); // 0x20 - 0x10 - 1
+    }
+
+    #[test]
+    fn test_sbc_a_underflow() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x00;
+        gb.cpu.registers.b = 0x01;
+        gb.cpu.registers.f.c = false;
+        gb.memory.write_byte(0x0100, 0x98); // SBC A,B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0xFF); // Underflow
+        assert_eq!(gb.cpu.registers.f.c, true); // Borrow
+    }
+
+    // Rotate tests
+    #[test]
+    fn test_rlca() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b10000001;
+        gb.memory.write_byte(0x0100, 0x07); // RLCA
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0b00000011); // Bit 7 rotates to bit 0
+        assert_eq!(gb.cpu.registers.f.c, true); // Old bit 7 to carry
+        assert_eq!(gb.cpu.registers.f.z, false);
+    }
+
+    #[test]
+    fn test_rrca() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b10000001;
+        gb.memory.write_byte(0x0100, 0x0F); // RRCA
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0b11000000); // Bit 0 rotates to bit 7
+        assert_eq!(gb.cpu.registers.f.c, true); // Old bit 0 to carry
+    }
+
+    #[test]
+    fn test_rla() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b10000000;
+        gb.cpu.registers.f.c = true; // Carry set
+        gb.memory.write_byte(0x0100, 0x17); // RLA
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0b00000001); // Carry rotates into bit 0
+        assert_eq!(gb.cpu.registers.f.c, true); // Old bit 7 to carry
+    }
+
+    #[test]
+    fn test_rra() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b00000001;
+        gb.cpu.registers.f.c = true; // Carry set
+        gb.memory.write_byte(0x0100, 0x1F); // RRA
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0b10000000); // Carry rotates into bit 7
+        assert_eq!(gb.cpu.registers.f.c, true); // Old bit 0 to carry
+    }
+
+    // Miscellaneous instruction tests
+    #[test]
+    fn test_cpl() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b10101010;
+        gb.memory.write_byte(0x0100, 0x2F); // CPL
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.registers.a, 0b01010101); // All bits flipped
+        assert_eq!(gb.cpu.registers.f.n, true);
+        assert_eq!(gb.cpu.registers.f.h, true);
+    }
+
+    #[test]
+    fn test_scf() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.c = false;
+        gb.memory.write_byte(0x0100, 0x37); // SCF
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.f.c, true);
+        assert_eq!(gb.cpu.registers.f.n, false);
+        assert_eq!(gb.cpu.registers.f.h, false);
+    }
+
+    #[test]
+    fn test_ccf() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.f.c = true;
+        gb.memory.write_byte(0x0100, 0x3F); // CCF
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.f.c, false); // Carry complemented
+        assert_eq!(gb.cpu.registers.f.n, false);
+        assert_eq!(gb.cpu.registers.f.h, false);
+    }
+
+    #[test]
+    fn test_daa_after_add() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x09;
+        gb.cpu.registers.b = 0x08;
+        // ADD A,B (BCD: 9 + 8 = 17)
+        gb.memory.write_byte(0x0100, 0x80);
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x11); // Binary result
+
+        // DAA should adjust to BCD
+        gb.memory.write_byte(0x0101, 0x27); // DAA
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x17); // BCD result
+    }
+
+    // Interrupt control tests
+    #[test]
+    fn test_di() {
+        let mut gb = GameBoy::new();
+        gb.cpu.interrupts_enabled = true;
+        gb.memory.write_byte(0x0100, 0xF3); // DI
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.interrupts_enabled, false);
+    }
+
+    #[test]
+    fn test_ei() {
+        let mut gb = GameBoy::new();
+        gb.cpu.interrupts_enabled = false;
+        gb.memory.write_byte(0x0100, 0xFB); // EI
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 4);
+        assert_eq!(gb.cpu.interrupts_enabled, true);
+    }
+
+    // RST tests
+    #[test]
+    fn test_rst_00() {
+        let mut gb = GameBoy::new();
+        let initial_sp = gb.cpu.sp;
+        gb.memory.write_byte(0x0100, 0xC7); // RST 00h
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 16);
+        assert_eq!(gb.cpu.pc, 0x0000); // Jump to 0x0000
+        assert_eq!(gb.cpu.sp, initial_sp - 2); // Return address pushed
+        assert_eq!(gb.memory.read_word(gb.cpu.sp), 0x0101); // Return address
+    }
+
+    #[test]
+    fn test_rst_38() {
+        let mut gb = GameBoy::new();
+        let initial_sp = gb.cpu.sp;
+        gb.memory.write_byte(0x0100, 0xFF); // RST 38h
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.pc, 0x0038); // Jump to 0x0038
+        assert_eq!(gb.cpu.sp, initial_sp - 2);
+        assert_eq!(gb.memory.read_word(gb.cpu.sp), 0x0101);
+    }
+
+    #[test]
+    fn test_rst_and_ret() {
+        let mut gb = GameBoy::new();
+        // RST 10h
+        gb.memory.write_byte(0x0100, 0xD7); // RST 10h
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.pc, 0x0010);
+
+        // RET
+        gb.memory.write_byte(0x0010, 0xC9); // RET
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.pc, 0x0101); // Back to after RST
+    }
 }

@@ -114,6 +114,22 @@ impl Cpu {
             // HALT
             0x76 => self.halt(),
 
+            // Rotate/shift instructions
+            0x07 => self.rlca(),
+            0x0F => self.rrca(),
+            0x17 => self.rla(),
+            0x1F => self.rra(),
+
+            // Miscellaneous
+            0x27 => self.daa(),
+            0x2F => self.cpl(),
+            0x37 => self.scf(),
+            0x3F => self.ccf(),
+
+            // Interrupt control
+            0xF3 => self.di(),
+            0xFB => self.ei(),
+
             // XOR operations
             0xAF => self.xor_a(),
             0xA8 => self.xor_b(),
@@ -227,6 +243,38 @@ impl Cpu {
             0xBD => self.cp_a_l(),
             0xBE => self.cp_a_hl(memory),
             0xFE => self.cp_a_n(memory),
+
+            // ADC A, r
+            0x8F => self.adc_a_a(),
+            0x88 => self.adc_a_b(),
+            0x89 => self.adc_a_c(),
+            0x8A => self.adc_a_d(),
+            0x8B => self.adc_a_e(),
+            0x8C => self.adc_a_h(),
+            0x8D => self.adc_a_l(),
+            0x8E => self.adc_a_hl(memory),
+            0xCE => self.adc_a_n(memory),
+
+            // SBC A, r
+            0x9F => self.sbc_a_a(),
+            0x98 => self.sbc_a_b(),
+            0x99 => self.sbc_a_c(),
+            0x9A => self.sbc_a_d(),
+            0x9B => self.sbc_a_e(),
+            0x9C => self.sbc_a_h(),
+            0x9D => self.sbc_a_l(),
+            0x9E => self.sbc_a_hl(memory),
+            0xDE => self.sbc_a_n(memory),
+
+            // RST - Restart (call to fixed address)
+            0xC7 => self.rst_00(memory),
+            0xCF => self.rst_08(memory),
+            0xD7 => self.rst_10(memory),
+            0xDF => self.rst_18(memory),
+            0xE7 => self.rst_20(memory),
+            0xEF => self.rst_28(memory),
+            0xF7 => self.rst_30(memory),
+            0xFF => self.rst_38(memory),
 
             // Stack operations - PUSH
             0xC5 => self.push_bc(memory),

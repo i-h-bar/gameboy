@@ -9,6 +9,7 @@ pub struct Cpu {
     pub pc: u16,
     pub sp: u16,
     pub halted: bool,
+    pub interrupts_enabled: bool,
 }
 
 impl Cpu {
@@ -18,6 +19,7 @@ impl Cpu {
             pc: 0x0100, // Start after boot ROM
             sp: 0xFFFE,
             halted: false,
+            interrupts_enabled: false,
         }
     }
 
@@ -1309,6 +1311,271 @@ impl Cpu {
 
         self.registers.set_hl(result);
         12
+    }
+
+    // ADC A,r - Add with carry
+    // Flags: Z if result is 0, N=0, H if carry from bit 3, C if carry from bit 7
+    fn adc_a(&mut self, value: u8) -> u8 {
+        let a = self.registers.a;
+        let carry = u8::from(self.registers.f.c);
+        let result = a.wrapping_add(value).wrapping_add(carry);
+
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = (a & 0x0F) + (value & 0x0F) + carry > 0x0F;
+        self.registers.f.c = u16::from(a) + u16::from(value) + u16::from(carry) > 0xFF;
+
+        self.registers.a = result;
+        4
+    }
+
+    fn adc_a_a(&mut self) -> u8 {
+        let v = self.registers.a;
+        self.adc_a(v)
+    }
+    fn adc_a_b(&mut self) -> u8 {
+        let v = self.registers.b;
+        self.adc_a(v)
+    }
+    fn adc_a_c(&mut self) -> u8 {
+        let v = self.registers.c;
+        self.adc_a(v)
+    }
+    fn adc_a_d(&mut self) -> u8 {
+        let v = self.registers.d;
+        self.adc_a(v)
+    }
+    fn adc_a_e(&mut self) -> u8 {
+        let v = self.registers.e;
+        self.adc_a(v)
+    }
+    fn adc_a_h(&mut self) -> u8 {
+        let v = self.registers.h;
+        self.adc_a(v)
+    }
+    fn adc_a_l(&mut self) -> u8 {
+        let v = self.registers.l;
+        self.adc_a(v)
+    }
+
+    fn adc_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        self.adc_a(value);
+        8
+    }
+
+    fn adc_a_n(&mut self, memory: &Memory) -> u8 {
+        let value = self.fetch_byte(memory);
+        self.adc_a(value);
+        8
+    }
+
+    // SBC A,r - Subtract with carry (borrow)
+    // Flags: Z if result is 0, N=1, H if borrow from bit 4, C if borrow
+    fn sbc_a(&mut self, value: u8) -> u8 {
+        let a = self.registers.a;
+        let carry = u8::from(self.registers.f.c);
+        let result = a.wrapping_sub(value).wrapping_sub(carry);
+
+        self.registers.f.z = result == 0;
+        self.registers.f.n = true;
+        self.registers.f.h = (a & 0x0F) < (value & 0x0F) + carry;
+        self.registers.f.c = u16::from(a) < u16::from(value) + u16::from(carry);
+
+        self.registers.a = result;
+        4
+    }
+
+    fn sbc_a_a(&mut self) -> u8 {
+        let v = self.registers.a;
+        self.sbc_a(v)
+    }
+    fn sbc_a_b(&mut self) -> u8 {
+        let v = self.registers.b;
+        self.sbc_a(v)
+    }
+    fn sbc_a_c(&mut self) -> u8 {
+        let v = self.registers.c;
+        self.sbc_a(v)
+    }
+    fn sbc_a_d(&mut self) -> u8 {
+        let v = self.registers.d;
+        self.sbc_a(v)
+    }
+    fn sbc_a_e(&mut self) -> u8 {
+        let v = self.registers.e;
+        self.sbc_a(v)
+    }
+    fn sbc_a_h(&mut self) -> u8 {
+        let v = self.registers.h;
+        self.sbc_a(v)
+    }
+    fn sbc_a_l(&mut self) -> u8 {
+        let v = self.registers.l;
+        self.sbc_a(v)
+    }
+
+    fn sbc_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        self.sbc_a(value);
+        8
+    }
+
+    fn sbc_a_n(&mut self, memory: &Memory) -> u8 {
+        let value = self.fetch_byte(memory);
+        self.sbc_a(value);
+        8
+    }
+
+    // RLCA - Rotate A left, old bit 7 to carry
+    fn rlca(&mut self) -> u8 {
+        let a = self.registers.a;
+        let carry = (a & 0x80) != 0;
+        self.registers.a = (a << 1) | u8::from(carry);
+        self.registers.f.z = false;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = carry;
+        4
+    }
+
+    // RRCA - Rotate A right, old bit 0 to carry
+    fn rrca(&mut self) -> u8 {
+        let a = self.registers.a;
+        let carry = (a & 0x01) != 0;
+        self.registers.a = (a >> 1) | (u8::from(carry) << 7);
+        self.registers.f.z = false;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = carry;
+        4
+    }
+
+    // RLA - Rotate A left through carry
+    fn rla(&mut self) -> u8 {
+        let a = self.registers.a;
+        let old_carry = u8::from(self.registers.f.c);
+        let new_carry = (a & 0x80) != 0;
+        self.registers.a = (a << 1) | old_carry;
+        self.registers.f.z = false;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = new_carry;
+        4
+    }
+
+    // RRA - Rotate A right through carry
+    fn rra(&mut self) -> u8 {
+        let a = self.registers.a;
+        let old_carry = u8::from(self.registers.f.c);
+        let new_carry = (a & 0x01) != 0;
+        self.registers.a = (a >> 1) | (old_carry << 7);
+        self.registers.f.z = false;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = new_carry;
+        4
+    }
+
+    // DAA - Decimal Adjust Accumulator (for BCD arithmetic)
+    fn daa(&mut self) -> u8 {
+        let mut a = self.registers.a;
+        let mut adjust = 0u8;
+
+        if self.registers.f.h || (!self.registers.f.n && (a & 0x0F) > 0x09) {
+            adjust |= 0x06;
+        }
+
+        if self.registers.f.c || (!self.registers.f.n && a > 0x99) {
+            adjust |= 0x60;
+            self.registers.f.c = true;
+        }
+
+        if self.registers.f.n {
+            a = a.wrapping_sub(adjust);
+        } else {
+            a = a.wrapping_add(adjust);
+        }
+
+        self.registers.a = a;
+        self.registers.f.z = a == 0;
+        self.registers.f.h = false;
+        4
+    }
+
+    // CPL - Complement A (flip all bits)
+    fn cpl(&mut self) -> u8 {
+        self.registers.a = !self.registers.a;
+        self.registers.f.n = true;
+        self.registers.f.h = true;
+        4
+    }
+
+    // SCF - Set Carry Flag
+    fn scf(&mut self) -> u8 {
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = true;
+        4
+    }
+
+    // CCF - Complement Carry Flag
+    fn ccf(&mut self) -> u8 {
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = !self.registers.f.c;
+        4
+    }
+
+    // DI - Disable Interrupts
+    fn di(&mut self) -> u8 {
+        self.interrupts_enabled = false;
+        4
+    }
+
+    // EI - Enable Interrupts
+    fn ei(&mut self) -> u8 {
+        self.interrupts_enabled = true;
+        4
+    }
+
+    // RST - Restart (call to fixed address)
+    fn rst(&mut self, addr: u8, memory: &mut Memory) -> u8 {
+        // Push current PC onto stack
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (self.pc >> 8) as u8);
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (self.pc & 0xFF) as u8);
+        // Jump to fixed address
+        self.pc = u16::from(addr);
+        16
+    }
+
+    fn rst_00(&mut self, memory: &mut Memory) -> u8 {
+        self.rst(0x00, memory)
+    }
+    fn rst_08(&mut self, memory: &mut Memory) -> u8 {
+        self.rst(0x08, memory)
+    }
+    fn rst_10(&mut self, memory: &mut Memory) -> u8 {
+        self.rst(0x10, memory)
+    }
+    fn rst_18(&mut self, memory: &mut Memory) -> u8 {
+        self.rst(0x18, memory)
+    }
+    fn rst_20(&mut self, memory: &mut Memory) -> u8 {
+        self.rst(0x20, memory)
+    }
+    fn rst_28(&mut self, memory: &mut Memory) -> u8 {
+        self.rst(0x28, memory)
+    }
+    fn rst_30(&mut self, memory: &mut Memory) -> u8 {
+        self.rst(0x30, memory)
+    }
+    fn rst_38(&mut self, memory: &mut Memory) -> u8 {
+        self.rst(0x38, memory)
     }
 }
 
