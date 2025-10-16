@@ -968,6 +968,348 @@ impl Cpu {
         self.cp_a(value);
         8
     }
+
+    // PUSH rr - Push 16-bit register pair onto stack (all take 16 cycles)
+    // Stack grows downward: SP decrements before each write
+    fn push_bc(&mut self, memory: &mut Memory) -> u8 {
+        let value = self.registers.bc();
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (value >> 8) as u8); // High byte
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (value & 0xFF) as u8); // Low byte
+        16
+    }
+
+    fn push_de(&mut self, memory: &mut Memory) -> u8 {
+        let value = self.registers.de();
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (value >> 8) as u8);
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (value & 0xFF) as u8);
+        16
+    }
+
+    fn push_hl(&mut self, memory: &mut Memory) -> u8 {
+        let value = self.registers.hl();
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (value >> 8) as u8);
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (value & 0xFF) as u8);
+        16
+    }
+
+    fn push_af(&mut self, memory: &mut Memory) -> u8 {
+        let value = self.registers.af();
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (value >> 8) as u8);
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (value & 0xFF) as u8);
+        16
+    }
+
+    // POP rr - Pop 16-bit register pair from stack (all take 12 cycles)
+    // Stack grows downward: SP increments after each read
+    fn pop_bc(&mut self, memory: &Memory) -> u8 {
+        let low = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        let high = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        self.registers.set_bc((u16::from(high) << 8) | u16::from(low));
+        12
+    }
+
+    fn pop_de(&mut self, memory: &Memory) -> u8 {
+        let low = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        let high = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        self.registers.set_de((u16::from(high) << 8) | u16::from(low));
+        12
+    }
+
+    fn pop_hl(&mut self, memory: &Memory) -> u8 {
+        let low = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        let high = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        self.registers.set_hl((u16::from(high) << 8) | u16::from(low));
+        12
+    }
+
+    fn pop_af(&mut self, memory: &Memory) -> u8 {
+        let low = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        let high = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        self.registers.set_af((u16::from(high) << 8) | u16::from(low));
+        12
+    }
+
+    // CALL nn - Call subroutine (push PC, then jump to nn)
+    fn call_nn(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        // Push current PC onto stack
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (self.pc >> 8) as u8);
+        self.sp = self.sp.wrapping_sub(1);
+        memory.write_byte(self.sp, (self.pc & 0xFF) as u8);
+        // Jump to address
+        self.pc = addr;
+        24
+    }
+
+    // RET - Return from subroutine (pop PC from stack)
+    fn ret(&mut self, memory: &Memory) -> u8 {
+        let low = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        let high = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        self.pc = (u16::from(high) << 8) | u16::from(low);
+        16
+    }
+
+    // CALL Z, nn - Call if Zero flag is set
+    fn call_z(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        if self.registers.f.z {
+            self.sp = self.sp.wrapping_sub(1);
+            memory.write_byte(self.sp, (self.pc >> 8) as u8);
+            self.sp = self.sp.wrapping_sub(1);
+            memory.write_byte(self.sp, (self.pc & 0xFF) as u8);
+            self.pc = addr;
+            24 // Taken
+        } else {
+            12 // Not taken
+        }
+    }
+
+    // CALL NZ, nn - Call if Zero flag is not set
+    fn call_nz(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        if self.registers.f.z {
+            12 // Not taken
+        } else {
+            self.sp = self.sp.wrapping_sub(1);
+            memory.write_byte(self.sp, (self.pc >> 8) as u8);
+            self.sp = self.sp.wrapping_sub(1);
+            memory.write_byte(self.sp, (self.pc & 0xFF) as u8);
+            self.pc = addr;
+            24 // Taken
+        }
+    }
+
+    // CALL C, nn - Call if Carry flag is set
+    fn call_c(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        if self.registers.f.c {
+            self.sp = self.sp.wrapping_sub(1);
+            memory.write_byte(self.sp, (self.pc >> 8) as u8);
+            self.sp = self.sp.wrapping_sub(1);
+            memory.write_byte(self.sp, (self.pc & 0xFF) as u8);
+            self.pc = addr;
+            24 // Taken
+        } else {
+            12 // Not taken
+        }
+    }
+
+    // CALL NC, nn - Call if Carry flag is not set
+    fn call_nc(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        if self.registers.f.c {
+            12 // Not taken
+        } else {
+            self.sp = self.sp.wrapping_sub(1);
+            memory.write_byte(self.sp, (self.pc >> 8) as u8);
+            self.sp = self.sp.wrapping_sub(1);
+            memory.write_byte(self.sp, (self.pc & 0xFF) as u8);
+            self.pc = addr;
+            24 // Taken
+        }
+    }
+
+    // RET Z - Return if Zero flag is set
+    fn ret_z(&mut self, memory: &Memory) -> u8 {
+        if self.registers.f.z {
+            let low = memory.read_byte(self.sp);
+            self.sp = self.sp.wrapping_add(1);
+            let high = memory.read_byte(self.sp);
+            self.sp = self.sp.wrapping_add(1);
+            self.pc = (u16::from(high) << 8) | u16::from(low);
+            20 // Taken
+        } else {
+            8 // Not taken
+        }
+    }
+
+    // RET NZ - Return if Zero flag is not set
+    fn ret_nz(&mut self, memory: &Memory) -> u8 {
+        if self.registers.f.z {
+            8 // Not taken
+        } else {
+            let low = memory.read_byte(self.sp);
+            self.sp = self.sp.wrapping_add(1);
+            let high = memory.read_byte(self.sp);
+            self.sp = self.sp.wrapping_add(1);
+            self.pc = (u16::from(high) << 8) | u16::from(low);
+            20 // Taken
+        }
+    }
+
+    // RET C - Return if Carry flag is set
+    fn ret_c(&mut self, memory: &Memory) -> u8 {
+        if self.registers.f.c {
+            let low = memory.read_byte(self.sp);
+            self.sp = self.sp.wrapping_add(1);
+            let high = memory.read_byte(self.sp);
+            self.sp = self.sp.wrapping_add(1);
+            self.pc = (u16::from(high) << 8) | u16::from(low);
+            20 // Taken
+        } else {
+            8 // Not taken
+        }
+    }
+
+    // RET NC - Return if Carry flag is not set
+    fn ret_nc(&mut self, memory: &Memory) -> u8 {
+        if self.registers.f.c {
+            8 // Not taken
+        } else {
+            let low = memory.read_byte(self.sp);
+            self.sp = self.sp.wrapping_add(1);
+            let high = memory.read_byte(self.sp);
+            self.sp = self.sp.wrapping_add(1);
+            self.pc = (u16::from(high) << 8) | u16::from(low);
+            20 // Taken
+        }
+    }
+
+    // RETI - Return from interrupt (same as RET but enables interrupts)
+    // Note: Interrupt handling not yet implemented, so this is just like RET for now
+    fn reti(&mut self, memory: &Memory) -> u8 {
+        let low = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        let high = memory.read_byte(self.sp);
+        self.sp = self.sp.wrapping_add(1);
+        self.pc = (u16::from(high) << 8) | u16::from(low);
+        // TODO: Enable interrupts when interrupt system is implemented
+        16
+    }
+
+    // LD A,(BC) - Load A from memory at address BC
+    fn ld_a_bc(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.bc();
+        self.registers.a = memory.read_byte(addr);
+        8
+    }
+
+    // LD A,(DE) - Load A from memory at address DE
+    fn ld_a_de(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.de();
+        self.registers.a = memory.read_byte(addr);
+        8
+    }
+
+    // LD (BC),A - Store A to memory at address BC
+    fn ld_bc_a(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.bc();
+        memory.write_byte(addr, self.registers.a);
+        8
+    }
+
+    // LD (DE),A - Store A to memory at address DE
+    fn ld_de_a(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.de();
+        memory.write_byte(addr, self.registers.a);
+        8
+    }
+
+    // LD A,(nn) - Load A from memory at 16-bit address
+    fn ld_a_nn(&mut self, memory: &Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        self.registers.a = memory.read_byte(addr);
+        16
+    }
+
+    // LD (nn),A - Store A to memory at 16-bit address
+    fn ld_nn_a(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        memory.write_byte(addr, self.registers.a);
+        16
+    }
+
+    // LDI (HL),A or LD (HL+),A - Store A to memory at HL, then increment HL
+    fn ldi_hl_a(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        memory.write_byte(addr, self.registers.a);
+        self.registers.set_hl(addr.wrapping_add(1));
+        8
+    }
+
+    // LDI A,(HL) or LD A,(HL+) - Load A from memory at HL, then increment HL
+    fn ldi_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        self.registers.a = memory.read_byte(addr);
+        self.registers.set_hl(addr.wrapping_add(1));
+        8
+    }
+
+    // LDD (HL),A or LD (HL-),A - Store A to memory at HL, then decrement HL
+    fn ldd_hl_a(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        memory.write_byte(addr, self.registers.a);
+        self.registers.set_hl(addr.wrapping_sub(1));
+        8
+    }
+
+    // LDD A,(HL) or LD A,(HL-) - Load A from memory at HL, then decrement HL
+    fn ldd_a_hl(&mut self, memory: &Memory) -> u8 {
+        let addr = self.registers.hl();
+        self.registers.a = memory.read_byte(addr);
+        self.registers.set_hl(addr.wrapping_sub(1));
+        8
+    }
+
+    // LD (nn),SP - Store SP to memory at 16-bit address
+    fn ld_nn_sp(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.fetch_word(memory);
+        memory.write_word(addr, self.sp);
+        20
+    }
+
+    // LD SP,HL - Load SP from HL
+    fn ld_sp_hl(&mut self) -> u8 {
+        self.sp = self.registers.hl();
+        8
+    }
+
+    // LD HL,SP+n or LDHL SP,n - Load HL with SP + signed 8-bit offset
+    // Flags: Z=0, N=0, H=carry from bit 3, C=carry from bit 7
+    fn ld_hl_sp_n(&mut self, memory: &Memory) -> u8 {
+        let offset = i16::from(
+            #[allow(clippy::cast_possible_wrap)]
+            {
+                self.fetch_byte(memory) as i8
+            },
+        );
+
+        let sp = self.sp;
+        #[allow(clippy::cast_sign_loss)]
+        let result = sp.wrapping_add(offset as u16);
+
+        // For LD HL,SP+n, half-carry and carry are calculated on the lower byte
+        let sp_low = (sp & 0xFF) as u8;
+        #[allow(clippy::cast_sign_loss)]
+        let offset_low = (offset & 0xFF) as u8;
+
+        self.registers.f.z = false;
+        self.registers.f.n = false;
+        self.registers.f.h = (sp_low & 0x0F) + (offset_low & 0x0F) > 0x0F;
+        self.registers.f.c = u16::from(sp_low) + u16::from(offset_low) > 0xFF;
+
+        self.registers.set_hl(result);
+        12
+    }
 }
 
 impl Default for Cpu {

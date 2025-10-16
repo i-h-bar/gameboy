@@ -90,6 +90,27 @@ impl Cpu {
             0x21 => self.ld_hl_nn(memory),
             0x31 => self.ld_sp_nn(memory),
 
+            // Load A from memory at register pairs
+            0x0A => self.ld_a_bc(memory),
+            0x1A => self.ld_a_de(memory),
+            0xFA => self.ld_a_nn(memory),
+
+            // Store A to memory at register pairs
+            0x02 => self.ld_bc_a(memory),
+            0x12 => self.ld_de_a(memory),
+            0xEA => self.ld_nn_a(memory),
+
+            // LDI/LDD - Load with increment/decrement
+            0x22 => self.ldi_hl_a(memory),
+            0x2A => self.ldi_a_hl(memory),
+            0x32 => self.ldd_hl_a(memory),
+            0x3A => self.ldd_a_hl(memory),
+
+            // SP-related loads
+            0x08 => self.ld_nn_sp(memory),
+            0xF9 => self.ld_sp_hl(),
+            0xF8 => self.ld_hl_sp_n(memory),
+
             // HALT
             0x76 => self.halt(),
 
@@ -206,6 +227,33 @@ impl Cpu {
             0xBD => self.cp_a_l(),
             0xBE => self.cp_a_hl(memory),
             0xFE => self.cp_a_n(memory),
+
+            // Stack operations - PUSH
+            0xC5 => self.push_bc(memory),
+            0xD5 => self.push_de(memory),
+            0xE5 => self.push_hl(memory),
+            0xF5 => self.push_af(memory),
+
+            // Stack operations - POP
+            0xC1 => self.pop_bc(memory),
+            0xD1 => self.pop_de(memory),
+            0xE1 => self.pop_hl(memory),
+            0xF1 => self.pop_af(memory),
+
+            // CALL instructions
+            0xCD => self.call_nn(memory),
+            0xCC => self.call_z(memory),
+            0xC4 => self.call_nz(memory),
+            0xDC => self.call_c(memory),
+            0xD4 => self.call_nc(memory),
+
+            // RET instructions
+            0xC9 => self.ret(memory),
+            0xC8 => self.ret_z(memory),
+            0xC0 => self.ret_nz(memory),
+            0xD8 => self.ret_c(memory),
+            0xD0 => self.ret_nc(memory),
+            0xD9 => self.reti(memory),
 
             _ => panic!(
                 "Unimplemented opcode: 0x{:02X} at PC: 0x{:04X}",
