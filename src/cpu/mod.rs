@@ -1577,6 +1577,541 @@ impl Cpu {
     fn rst_38(&mut self, memory: &mut Memory) -> u8 {
         self.rst(0x38, memory)
     }
+
+    // CB-prefixed instructions - Extended operations
+
+    // RLC r - Rotate left with carry (unlike RLCA, this sets Z flag)
+    // Flags: Z if result is 0, N=0, H=0, C=bit 7
+    fn rlc(&mut self, value: u8) -> u8 {
+        let carry = (value & 0x80) != 0;
+        let result = (value << 1) | u8::from(carry);
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = carry;
+        result
+    }
+
+    fn rlc_b(&mut self) -> u8 {
+        let result = self.rlc(self.registers.b);
+        self.registers.b = result;
+        8
+    }
+    fn rlc_c(&mut self) -> u8 {
+        let result = self.rlc(self.registers.c);
+        self.registers.c = result;
+        8
+    }
+    fn rlc_d(&mut self) -> u8 {
+        let result = self.rlc(self.registers.d);
+        self.registers.d = result;
+        8
+    }
+    fn rlc_e(&mut self) -> u8 {
+        let result = self.rlc(self.registers.e);
+        self.registers.e = result;
+        8
+    }
+    fn rlc_h(&mut self) -> u8 {
+        let result = self.rlc(self.registers.h);
+        self.registers.h = result;
+        8
+    }
+    fn rlc_l(&mut self) -> u8 {
+        let result = self.rlc(self.registers.l);
+        self.registers.l = result;
+        8
+    }
+    fn rlc_hl(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        let result = self.rlc(value);
+        memory.write_byte(addr, result);
+        16
+    }
+    fn rlc_a(&mut self) -> u8 {
+        let result = self.rlc(self.registers.a);
+        self.registers.a = result;
+        8
+    }
+
+    // RRC r - Rotate right with carry
+    // Flags: Z if result is 0, N=0, H=0, C=bit 0
+    fn rrc(&mut self, value: u8) -> u8 {
+        let carry = (value & 0x01) != 0;
+        let result = (value >> 1) | (u8::from(carry) << 7);
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = carry;
+        result
+    }
+
+    fn rrc_b(&mut self) -> u8 {
+        let result = self.rrc(self.registers.b);
+        self.registers.b = result;
+        8
+    }
+    fn rrc_c(&mut self) -> u8 {
+        let result = self.rrc(self.registers.c);
+        self.registers.c = result;
+        8
+    }
+    fn rrc_d(&mut self) -> u8 {
+        let result = self.rrc(self.registers.d);
+        self.registers.d = result;
+        8
+    }
+    fn rrc_e(&mut self) -> u8 {
+        let result = self.rrc(self.registers.e);
+        self.registers.e = result;
+        8
+    }
+    fn rrc_h(&mut self) -> u8 {
+        let result = self.rrc(self.registers.h);
+        self.registers.h = result;
+        8
+    }
+    fn rrc_l(&mut self) -> u8 {
+        let result = self.rrc(self.registers.l);
+        self.registers.l = result;
+        8
+    }
+    fn rrc_hl(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        let result = self.rrc(value);
+        memory.write_byte(addr, result);
+        16
+    }
+    fn rrc_a(&mut self) -> u8 {
+        let result = self.rrc(self.registers.a);
+        self.registers.a = result;
+        8
+    }
+
+    // RL r - Rotate left through carry
+    // Flags: Z if result is 0, N=0, H=0, C=bit 7
+    fn rl(&mut self, value: u8) -> u8 {
+        let old_carry = u8::from(self.registers.f.c);
+        let new_carry = (value & 0x80) != 0;
+        let result = (value << 1) | old_carry;
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = new_carry;
+        result
+    }
+
+    fn rl_b(&mut self) -> u8 {
+        let result = self.rl(self.registers.b);
+        self.registers.b = result;
+        8
+    }
+    fn rl_c(&mut self) -> u8 {
+        let result = self.rl(self.registers.c);
+        self.registers.c = result;
+        8
+    }
+    fn rl_d(&mut self) -> u8 {
+        let result = self.rl(self.registers.d);
+        self.registers.d = result;
+        8
+    }
+    fn rl_e(&mut self) -> u8 {
+        let result = self.rl(self.registers.e);
+        self.registers.e = result;
+        8
+    }
+    fn rl_h(&mut self) -> u8 {
+        let result = self.rl(self.registers.h);
+        self.registers.h = result;
+        8
+    }
+    fn rl_l(&mut self) -> u8 {
+        let result = self.rl(self.registers.l);
+        self.registers.l = result;
+        8
+    }
+    fn rl_hl(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        let result = self.rl(value);
+        memory.write_byte(addr, result);
+        16
+    }
+    fn rl_a(&mut self) -> u8 {
+        let result = self.rl(self.registers.a);
+        self.registers.a = result;
+        8
+    }
+
+    // RR r - Rotate right through carry
+    // Flags: Z if result is 0, N=0, H=0, C=bit 0
+    fn rr(&mut self, value: u8) -> u8 {
+        let old_carry = u8::from(self.registers.f.c);
+        let new_carry = (value & 0x01) != 0;
+        let result = (value >> 1) | (old_carry << 7);
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = new_carry;
+        result
+    }
+
+    fn rr_b(&mut self) -> u8 {
+        let result = self.rr(self.registers.b);
+        self.registers.b = result;
+        8
+    }
+    fn rr_c(&mut self) -> u8 {
+        let result = self.rr(self.registers.c);
+        self.registers.c = result;
+        8
+    }
+    fn rr_d(&mut self) -> u8 {
+        let result = self.rr(self.registers.d);
+        self.registers.d = result;
+        8
+    }
+    fn rr_e(&mut self) -> u8 {
+        let result = self.rr(self.registers.e);
+        self.registers.e = result;
+        8
+    }
+    fn rr_h(&mut self) -> u8 {
+        let result = self.rr(self.registers.h);
+        self.registers.h = result;
+        8
+    }
+    fn rr_l(&mut self) -> u8 {
+        let result = self.rr(self.registers.l);
+        self.registers.l = result;
+        8
+    }
+    fn rr_hl(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        let result = self.rr(value);
+        memory.write_byte(addr, result);
+        16
+    }
+    fn rr_a(&mut self) -> u8 {
+        let result = self.rr(self.registers.a);
+        self.registers.a = result;
+        8
+    }
+
+    // SLA r - Shift left arithmetic (bit 0 becomes 0)
+    // Flags: Z if result is 0, N=0, H=0, C=bit 7
+    fn sla(&mut self, value: u8) -> u8 {
+        let carry = (value & 0x80) != 0;
+        let result = value << 1;
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = carry;
+        result
+    }
+
+    fn sla_b(&mut self) -> u8 {
+        let result = self.sla(self.registers.b);
+        self.registers.b = result;
+        8
+    }
+    fn sla_c(&mut self) -> u8 {
+        let result = self.sla(self.registers.c);
+        self.registers.c = result;
+        8
+    }
+    fn sla_d(&mut self) -> u8 {
+        let result = self.sla(self.registers.d);
+        self.registers.d = result;
+        8
+    }
+    fn sla_e(&mut self) -> u8 {
+        let result = self.sla(self.registers.e);
+        self.registers.e = result;
+        8
+    }
+    fn sla_h(&mut self) -> u8 {
+        let result = self.sla(self.registers.h);
+        self.registers.h = result;
+        8
+    }
+    fn sla_l(&mut self) -> u8 {
+        let result = self.sla(self.registers.l);
+        self.registers.l = result;
+        8
+    }
+    fn sla_hl(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        let result = self.sla(value);
+        memory.write_byte(addr, result);
+        16
+    }
+    fn sla_a(&mut self) -> u8 {
+        let result = self.sla(self.registers.a);
+        self.registers.a = result;
+        8
+    }
+
+    // SRA r - Shift right arithmetic (preserve sign bit)
+    // Flags: Z if result is 0, N=0, H=0, C=bit 0
+    fn sra(&mut self, value: u8) -> u8 {
+        let carry = (value & 0x01) != 0;
+        let result = (value >> 1) | (value & 0x80); // Preserve bit 7
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = carry;
+        result
+    }
+
+    fn sra_b(&mut self) -> u8 {
+        let result = self.sra(self.registers.b);
+        self.registers.b = result;
+        8
+    }
+    fn sra_c(&mut self) -> u8 {
+        let result = self.sra(self.registers.c);
+        self.registers.c = result;
+        8
+    }
+    fn sra_d(&mut self) -> u8 {
+        let result = self.sra(self.registers.d);
+        self.registers.d = result;
+        8
+    }
+    fn sra_e(&mut self) -> u8 {
+        let result = self.sra(self.registers.e);
+        self.registers.e = result;
+        8
+    }
+    fn sra_h(&mut self) -> u8 {
+        let result = self.sra(self.registers.h);
+        self.registers.h = result;
+        8
+    }
+    fn sra_l(&mut self) -> u8 {
+        let result = self.sra(self.registers.l);
+        self.registers.l = result;
+        8
+    }
+    fn sra_hl(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        let result = self.sra(value);
+        memory.write_byte(addr, result);
+        16
+    }
+    fn sra_a(&mut self) -> u8 {
+        let result = self.sra(self.registers.a);
+        self.registers.a = result;
+        8
+    }
+
+    // SWAP r - Swap upper and lower nibbles
+    // Flags: Z if result is 0, N=0, H=0, C=0
+    fn swap(&mut self, value: u8) -> u8 {
+        let result = value.rotate_left(4);
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = false;
+        result
+    }
+
+    fn swap_b(&mut self) -> u8 {
+        let result = self.swap(self.registers.b);
+        self.registers.b = result;
+        8
+    }
+    fn swap_c(&mut self) -> u8 {
+        let result = self.swap(self.registers.c);
+        self.registers.c = result;
+        8
+    }
+    fn swap_d(&mut self) -> u8 {
+        let result = self.swap(self.registers.d);
+        self.registers.d = result;
+        8
+    }
+    fn swap_e(&mut self) -> u8 {
+        let result = self.swap(self.registers.e);
+        self.registers.e = result;
+        8
+    }
+    fn swap_h(&mut self) -> u8 {
+        let result = self.swap(self.registers.h);
+        self.registers.h = result;
+        8
+    }
+    fn swap_l(&mut self) -> u8 {
+        let result = self.swap(self.registers.l);
+        self.registers.l = result;
+        8
+    }
+    fn swap_hl(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        let result = self.swap(value);
+        memory.write_byte(addr, result);
+        16
+    }
+    fn swap_a(&mut self) -> u8 {
+        let result = self.swap(self.registers.a);
+        self.registers.a = result;
+        8
+    }
+
+    // SRL r - Shift right logical (bit 7 becomes 0)
+    // Flags: Z if result is 0, N=0, H=0, C=bit 0
+    fn srl(&mut self, value: u8) -> u8 {
+        let carry = (value & 0x01) != 0;
+        let result = value >> 1;
+        self.registers.f.z = result == 0;
+        self.registers.f.n = false;
+        self.registers.f.h = false;
+        self.registers.f.c = carry;
+        result
+    }
+
+    fn srl_b(&mut self) -> u8 {
+        let result = self.srl(self.registers.b);
+        self.registers.b = result;
+        8
+    }
+    fn srl_c(&mut self) -> u8 {
+        let result = self.srl(self.registers.c);
+        self.registers.c = result;
+        8
+    }
+    fn srl_d(&mut self) -> u8 {
+        let result = self.srl(self.registers.d);
+        self.registers.d = result;
+        8
+    }
+    fn srl_e(&mut self) -> u8 {
+        let result = self.srl(self.registers.e);
+        self.registers.e = result;
+        8
+    }
+    fn srl_h(&mut self) -> u8 {
+        let result = self.srl(self.registers.h);
+        self.registers.h = result;
+        8
+    }
+    fn srl_l(&mut self) -> u8 {
+        let result = self.srl(self.registers.l);
+        self.registers.l = result;
+        8
+    }
+    fn srl_hl(&mut self, memory: &mut Memory) -> u8 {
+        let addr = self.registers.hl();
+        let value = memory.read_byte(addr);
+        let result = self.srl(value);
+        memory.write_byte(addr, result);
+        16
+    }
+    fn srl_a(&mut self) -> u8 {
+        let result = self.srl(self.registers.a);
+        self.registers.a = result;
+        8
+    }
+
+    // BIT b,r - Test bit b in register r
+    // Flags: Z if bit is 0, N=0, H=1, C not affected
+    fn bit(&mut self, opcode: u8, memory: &Memory) -> u8 {
+        let bit = (opcode >> 3) & 0x07; // Bits 3-5 specify which bit to test
+        let reg = opcode & 0x07; // Bits 0-2 specify the register
+
+        let value = match reg {
+            0 => self.registers.b,
+            1 => self.registers.c,
+            2 => self.registers.d,
+            3 => self.registers.e,
+            4 => self.registers.h,
+            5 => self.registers.l,
+            6 => {
+                let addr = self.registers.hl();
+                memory.read_byte(addr)
+            }
+            7 => self.registers.a,
+            _ => unreachable!(),
+        };
+
+        let bit_set = (value & (1 << bit)) != 0;
+        self.registers.f.z = !bit_set;
+        self.registers.f.n = false;
+        self.registers.f.h = true;
+        // Carry flag not affected
+
+        if reg == 6 {
+            12 // (HL) takes 12 cycles
+        } else {
+            8 // Registers take 8 cycles
+        }
+    }
+
+    // RES b,r - Reset (clear) bit b in register r
+    fn res(&mut self, opcode: u8, memory: &mut Memory) -> u8 {
+        let bit = (opcode >> 3) & 0x07; // Bits 3-5 specify which bit to reset
+        let reg = opcode & 0x07; // Bits 0-2 specify the register
+        let mask = !(1 << bit);
+
+        match reg {
+            0 => self.registers.b &= mask,
+            1 => self.registers.c &= mask,
+            2 => self.registers.d &= mask,
+            3 => self.registers.e &= mask,
+            4 => self.registers.h &= mask,
+            5 => self.registers.l &= mask,
+            6 => {
+                let addr = self.registers.hl();
+                let value = memory.read_byte(addr);
+                memory.write_byte(addr, value & mask);
+            }
+            7 => self.registers.a &= mask,
+            _ => unreachable!(),
+        }
+
+        if reg == 6 {
+            16 // (HL) takes 16 cycles
+        } else {
+            8 // Registers take 8 cycles
+        }
+    }
+
+    // SET b,r - Set bit b in register r
+    fn set(&mut self, opcode: u8, memory: &mut Memory) -> u8 {
+        let bit = (opcode >> 3) & 0x07; // Bits 3-5 specify which bit to set
+        let reg = opcode & 0x07; // Bits 0-2 specify the register
+        let mask = 1 << bit;
+
+        match reg {
+            0 => self.registers.b |= mask,
+            1 => self.registers.c |= mask,
+            2 => self.registers.d |= mask,
+            3 => self.registers.e |= mask,
+            4 => self.registers.h |= mask,
+            5 => self.registers.l |= mask,
+            6 => {
+                let addr = self.registers.hl();
+                let value = memory.read_byte(addr);
+                memory.write_byte(addr, value | mask);
+            }
+            7 => self.registers.a |= mask,
+            _ => unreachable!(),
+        }
+
+        if reg == 6 {
+            16 // (HL) takes 16 cycles
+        } else {
+            8 // Registers take 8 cycles
+        }
+    }
 }
 
 impl Default for Cpu {

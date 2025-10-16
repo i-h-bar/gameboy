@@ -303,11 +303,112 @@ impl Cpu {
             0xD0 => self.ret_nc(memory),
             0xD9 => self.reti(memory),
 
+            // CB-prefixed instructions
+            0xCB => {
+                let cb_opcode = self.fetch_byte(memory);
+                self.execute_cb_opcode(cb_opcode, memory)
+            }
+
             _ => panic!(
                 "Unimplemented opcode: 0x{:02X} at PC: 0x{:04X}",
                 opcode,
                 self.pc.wrapping_sub(1)
             ),
+        }
+    }
+
+    /// Execute a CB-prefixed opcode
+    #[allow(clippy::too_many_lines)]
+    fn execute_cb_opcode(&mut self, opcode: u8, memory: &mut Memory) -> u8 {
+        match opcode {
+            // RLC r - Rotate left with carry
+            0x00 => self.rlc_b(),
+            0x01 => self.rlc_c(),
+            0x02 => self.rlc_d(),
+            0x03 => self.rlc_e(),
+            0x04 => self.rlc_h(),
+            0x05 => self.rlc_l(),
+            0x06 => self.rlc_hl(memory),
+            0x07 => self.rlc_a(),
+
+            // RRC r - Rotate right with carry
+            0x08 => self.rrc_b(),
+            0x09 => self.rrc_c(),
+            0x0A => self.rrc_d(),
+            0x0B => self.rrc_e(),
+            0x0C => self.rrc_h(),
+            0x0D => self.rrc_l(),
+            0x0E => self.rrc_hl(memory),
+            0x0F => self.rrc_a(),
+
+            // RL r - Rotate left through carry
+            0x10 => self.rl_b(),
+            0x11 => self.rl_c(),
+            0x12 => self.rl_d(),
+            0x13 => self.rl_e(),
+            0x14 => self.rl_h(),
+            0x15 => self.rl_l(),
+            0x16 => self.rl_hl(memory),
+            0x17 => self.rl_a(),
+
+            // RR r - Rotate right through carry
+            0x18 => self.rr_b(),
+            0x19 => self.rr_c(),
+            0x1A => self.rr_d(),
+            0x1B => self.rr_e(),
+            0x1C => self.rr_h(),
+            0x1D => self.rr_l(),
+            0x1E => self.rr_hl(memory),
+            0x1F => self.rr_a(),
+
+            // SLA r - Shift left arithmetic
+            0x20 => self.sla_b(),
+            0x21 => self.sla_c(),
+            0x22 => self.sla_d(),
+            0x23 => self.sla_e(),
+            0x24 => self.sla_h(),
+            0x25 => self.sla_l(),
+            0x26 => self.sla_hl(memory),
+            0x27 => self.sla_a(),
+
+            // SRA r - Shift right arithmetic (preserve sign bit)
+            0x28 => self.sra_b(),
+            0x29 => self.sra_c(),
+            0x2A => self.sra_d(),
+            0x2B => self.sra_e(),
+            0x2C => self.sra_h(),
+            0x2D => self.sra_l(),
+            0x2E => self.sra_hl(memory),
+            0x2F => self.sra_a(),
+
+            // SWAP r - Swap nibbles
+            0x30 => self.swap_b(),
+            0x31 => self.swap_c(),
+            0x32 => self.swap_d(),
+            0x33 => self.swap_e(),
+            0x34 => self.swap_h(),
+            0x35 => self.swap_l(),
+            0x36 => self.swap_hl(memory),
+            0x37 => self.swap_a(),
+
+            // SRL r - Shift right logical
+            0x38 => self.srl_b(),
+            0x39 => self.srl_c(),
+            0x3A => self.srl_d(),
+            0x3B => self.srl_e(),
+            0x3C => self.srl_h(),
+            0x3D => self.srl_l(),
+            0x3E => self.srl_hl(memory),
+            0x3F => self.srl_a(),
+
+            // BIT b,r - Test bit b in register r
+            0x40..=0x7F => self.bit(opcode, memory),
+
+            // RES b,r - Reset bit b in register r
+            0x80..=0xBF => self.res(opcode, memory),
+
+            // SET b,r - Set bit b in register r
+            0xC0..=0xFF => self.set(opcode, memory),
         }
     }
 }

@@ -1,9 +1,14 @@
+pub mod cartridge;
 pub mod cpu;
 pub mod memory;
+
+use std::fs::File;
+use std::io::Write;
 
 pub struct GameBoy {
     pub cpu: cpu::Cpu,
     pub memory: memory::Memory,
+    log_file: Option<File>,
 }
 
 impl GameBoy {
@@ -11,7 +16,21 @@ impl GameBoy {
         Self {
             cpu: cpu::Cpu::default(),
             memory: memory::Memory::default(),
+            log_file: None,
         }
+    }
+
+    /// Load a ROM file
+    pub fn load_rom(&mut self, path: &str) -> std::io::Result<()> {
+        let cartridge = cartridge::Cartridge::load(path)?;
+        self.memory.load_cartridge(cartridge);
+        Ok(())
+    }
+
+    /// Enable CPU state logging to a file (gameboy-doctor format)
+    pub fn enable_logging(&mut self, path: &str) -> std::io::Result<()> {
+        self.log_file = Some(File::create(path)?);
+        Ok(())
     }
 
     /// Initialize to post-boot state (skipping boot ROM for now)
@@ -23,6 +42,51 @@ impl GameBoy {
         self.cpu.registers.f.h = true;
         self.cpu.registers.f.c = true;
     }
+
+    /// Execute one instruction and log if enabled
+    pub fn step(&mut self) -> u8 {
+        // Log CPU state before execution (gameboy-doctor format)
+        if self.log_file.is_some() {
+            let a = self.cpu.registers.a;
+            let f = self.cpu.registers.f.to_u8();
+            let b = self.cpu.registers.b;
+            let c = self.cpu.registers.c;
+            let d = self.cpu.registers.d;
+            let e = self.cpu.registers.e;
+            let h = self.cpu.registers.h;
+            let l = self.cpu.registers.l;
+            let sp = self.cpu.sp;
+            let pc = self.cpu.pc;
+
+            // Read next 4 bytes at PC for PCMEM
+            let pcmem0 = self.memory.read_byte(pc);
+            let pcmem1 = self.memory.read_byte(pc.wrapping_add(1));
+            let pcmem2 = self.memory.read_byte(pc.wrapping_add(2));
+            let pcmem3 = self.memory.read_byte(pc.wrapping_add(3));
+
+            let line = format!(
+                "A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}\n",
+                a, f, b, c, d, e, h, l, sp, pc, pcmem0, pcmem1, pcmem2, pcmem3
+            );
+
+            if let Some(ref mut log) = self.log_file {
+                let _ = log.write_all(line.as_bytes());
+            }
+        }
+
+        // Execute instruction
+        self.cpu.execute(&mut self.memory)
+    }
+
+    /// Run the emulator for a number of instructions
+    pub fn run(&mut self, num_instructions: usize) {
+        for _ in 0..num_instructions {
+            if self.cpu.halted {
+                break;
+            }
+            self.step();
+        }
+    }
 }
 
 impl Default for GameBoy {
@@ -32,8 +96,44 @@ impl Default for GameBoy {
 }
 
 fn main() {
-    let mut game = GameBoy::default();
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() < 2 {
+        eprintln!("Usage: {} <rom_file> [log_file]", args[0]);
+        eprintln!("  rom_file: Path to Game Boy ROM file (.gb)");
+        eprintln!("  log_file: Optional path to CPU log file for gameboy-doctor");
+        std::process::exit(1);
+    }
+
+    let rom_path = &args[1];
+    let log_path = args.get(2);
+
+    let mut game = GameBoy::new();
+
+    // Load ROM
+    if let Err(e) = game.load_rom(rom_path) {
+        eprintln!("Error loading ROM: {}", e);
+        std::process::exit(1);
+    }
+
+    // Enable logging if requested
+    if let Some(log_path) = log_path {
+        if let Err(e) = game.enable_logging(log_path) {
+            eprintln!("Error creating log file: {}", e);
+            std::process::exit(1);
+        }
+        println!("Logging enabled to: {}", log_path);
+    }
+
     game.power_on();
+
+    // Run for a large number of instructions (or until HALT)
+    // For testing with gameboy-doctor, you typically want to run until
+    // a specific point or until HALT
+    println!("Running emulator...");
+    game.run(1_000_000); // Run for 1 million instructions or until HALT
+
+    println!("Emulator stopped. CPU halted: {}", game.cpu.halted);
 }
 
 #[cfg(test)]
@@ -1271,5 +1371,324 @@ mod tests {
         gb.memory.write_byte(0x0010, 0xC9); // RET
         gb.cpu.execute(&mut gb.memory);
         assert_eq!(gb.cpu.pc, 0x0101); // Back to after RST
+    }
+
+    // CB-prefixed instruction tests
+    #[test]
+    fn test_rlc_b() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.b = 0b10000001;
+        gb.memory.write_byte(0x0100, 0xCB); // CB prefix
+        gb.memory.write_byte(0x0101, 0x00); // RLC B
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.cpu.registers.b, 0b00000011);
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.c, true); // Bit 7 to carry
+        assert_eq!(gb.cpu.pc, 0x0102);
+    }
+
+    #[test]
+    fn test_rlc_zero() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x00;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x07); // RLC A
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x00);
+        assert_eq!(gb.cpu.registers.f.z, true); // Zero flag set
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_rrc_a() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b11000001;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x0F); // RRC A
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.cpu.registers.a, 0b11100000);
+        assert_eq!(gb.cpu.registers.f.c, true); // Bit 0 to carry
+        assert_eq!(gb.cpu.registers.f.z, false);
+    }
+
+    #[test]
+    fn test_rl_c() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.c = 0b10000000;
+        gb.cpu.registers.f.c = true; // Carry in
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x11); // RL C
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.c, 0b00000001); // Carry shifts into bit 0
+        assert_eq!(gb.cpu.registers.f.c, true); // Bit 7 to carry
+        assert_eq!(gb.cpu.registers.f.z, false);
+    }
+
+    #[test]
+    fn test_rr_d() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.d = 0b00000001;
+        gb.cpu.registers.f.c = true; // Carry in
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x1A); // RR D
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.d, 0b10000000); // Carry shifts into bit 7
+        assert_eq!(gb.cpu.registers.f.c, true); // Bit 0 to carry
+    }
+
+    #[test]
+    fn test_sla_e() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.e = 0b11000001;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x23); // SLA E
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.cpu.registers.e, 0b10000010); // Shift left, 0 into bit 0
+        assert_eq!(gb.cpu.registers.f.c, true); // Bit 7 to carry
+        assert_eq!(gb.cpu.registers.f.z, false);
+    }
+
+    #[test]
+    fn test_sra_h() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.h = 0b10000001;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x2C); // SRA H
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.h, 0b11000000); // Bit 7 preserved (sign)
+        assert_eq!(gb.cpu.registers.f.c, true); // Bit 0 to carry
+    }
+
+    #[test]
+    fn test_srl_l() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.l = 0b10000001;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x3D); // SRL L
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.l, 0b01000000); // Shift right logical, 0 into bit 7
+        assert_eq!(gb.cpu.registers.f.c, true); // Bit 0 to carry
+    }
+
+    #[test]
+    fn test_swap_a() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0xF0;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x37); // SWAP A
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.cpu.registers.a, 0x0F); // Nibbles swapped
+        assert_eq!(gb.cpu.registers.f.z, false);
+        assert_eq!(gb.cpu.registers.f.c, false);
+    }
+
+    #[test]
+    fn test_swap_zero() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.b = 0x00;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x30); // SWAP B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.b, 0x00);
+        assert_eq!(gb.cpu.registers.f.z, true); // Zero flag
+    }
+
+    #[test]
+    fn test_swap_mixed() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.c = 0x12;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x31); // SWAP C
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.c, 0x21); // 0x12 -> 0x21
+    }
+
+    #[test]
+    fn test_bit_0_a_set() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b00000001;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x47); // BIT 0,A
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.cpu.registers.a, 0b00000001); // A unchanged
+        assert_eq!(gb.cpu.registers.f.z, false); // Bit is set
+        assert_eq!(gb.cpu.registers.f.n, false);
+        assert_eq!(gb.cpu.registers.f.h, true);
+    }
+
+    #[test]
+    fn test_bit_7_b_clear() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.b = 0b01111111;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x78); // BIT 7,B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.b, 0b01111111); // B unchanged
+        assert_eq!(gb.cpu.registers.f.z, true); // Bit is clear
+        assert_eq!(gb.cpu.registers.f.h, true);
+    }
+
+    #[test]
+    fn test_bit_3_c_set() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.c = 0b00001000;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x59); // BIT 3,C
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.f.z, false); // Bit 3 is set
+        assert_eq!(gb.cpu.registers.f.h, true);
+    }
+
+    #[test]
+    fn test_set_0_d() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.d = 0b00000000;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0xC2); // SET 0,D
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.cpu.registers.d, 0b00000001); // Bit 0 set
+    }
+
+    #[test]
+    fn test_set_7_e() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.e = 0b00000000;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0xFB); // SET 7,E
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.e, 0b10000000); // Bit 7 set
+    }
+
+    #[test]
+    fn test_set_already_set() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.h = 0b11111111;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0xDC); // SET 3,H
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.h, 0b11111111); // Unchanged (bit already set)
+    }
+
+    #[test]
+    fn test_res_0_l() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.l = 0b11111111;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x85); // RES 0,L
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.cpu.registers.l, 0b11111110); // Bit 0 cleared
+    }
+
+    #[test]
+    fn test_res_7_a() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0b11111111;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0xBF); // RES 7,A
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0b01111111); // Bit 7 cleared
+    }
+
+    #[test]
+    fn test_res_already_clear() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.b = 0b00000000;
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x90); // RES 2,B
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.b, 0b00000000); // Unchanged (bit already clear)
+    }
+
+    #[test]
+    fn test_cb_hl_operations() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.set_hl(0xC000);
+        gb.memory.write_byte(0xC000, 0b10101010);
+
+        // RLC (HL)
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x06); // RLC (HL)
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 16); // Memory operations take 16 cycles
+        assert_eq!(gb.memory.read_byte(0xC000), 0b01010101);
+        assert_eq!(gb.cpu.registers.f.c, true);
+    }
+
+    #[test]
+    fn test_bit_hl() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.set_hl(0xC000);
+        gb.memory.write_byte(0xC000, 0b10000000);
+
+        // BIT 7,(HL)
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x7E); // BIT 7,(HL)
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12); // BIT (HL) takes 12 cycles
+        assert_eq!(gb.cpu.registers.f.z, false); // Bit is set
+        assert_eq!(gb.cpu.registers.f.h, true);
+    }
+
+    #[test]
+    fn test_set_hl() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.set_hl(0xC000);
+        gb.memory.write_byte(0xC000, 0x00);
+
+        // SET 4,(HL)
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0xE6); // SET 4,(HL)
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 16); // SET (HL) takes 16 cycles
+        assert_eq!(gb.memory.read_byte(0xC000), 0b00010000);
+    }
+
+    #[test]
+    fn test_res_hl() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.set_hl(0xC000);
+        gb.memory.write_byte(0xC000, 0xFF);
+
+        // RES 5,(HL)
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0xAE); // RES 5,(HL)
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 16); // RES (HL) takes 16 cycles
+        assert_eq!(gb.memory.read_byte(0xC000), 0b11011111);
+    }
+
+    #[test]
+    fn test_sla_hl() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.set_hl(0xC000);
+        gb.memory.write_byte(0xC000, 0b11000000);
+
+        // SLA (HL)
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x26); // SLA (HL)
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.memory.read_byte(0xC000), 0b10000000);
+        assert_eq!(gb.cpu.registers.f.c, true); // Bit 7 to carry
+    }
+
+    #[test]
+    fn test_swap_hl() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.set_hl(0xC000);
+        gb.memory.write_byte(0xC000, 0xAB);
+
+        // SWAP (HL)
+        gb.memory.write_byte(0x0100, 0xCB);
+        gb.memory.write_byte(0x0101, 0x36); // SWAP (HL)
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.memory.read_byte(0xC000), 0xBA); // Nibbles swapped
+        assert_eq!(gb.cpu.registers.f.z, false);
     }
 }
