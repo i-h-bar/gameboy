@@ -100,6 +100,12 @@ impl Cpu {
             0x12 => self.ld_de_a(memory),
             0xEA => self.ld_nn_a(memory),
 
+            // LDH - Load to/from high memory (I/O ports at 0xFF00+n)
+            0xE0 => self.ldh_n_a(memory),
+            0xF0 => self.ldh_a_n(memory),
+            0xE2 => self.ldh_c_a(memory),
+            0xF2 => self.ldh_a_c(memory),
+
             // LDI/LDD - Load with increment/decrement
             0x22 => self.ldi_hl_a(memory),
             0x2A => self.ldi_a_hl(memory),

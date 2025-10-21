@@ -1601,4 +1601,145 @@ mod tests {
         assert_eq!(gb.memory.read_byte(0xC000), 0xBA); // Nibbles swapped
         assert_eq!(gb.cpu.registers.f.z, false);
     }
+
+    // LDH (Load to/from High memory) instruction tests
+    #[test]
+    fn test_ldh_n_a() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x42;
+        gb.memory.write_byte(0x0100, 0xE0); // LDH (n),A
+        gb.memory.write_byte(0x0101, 0x80); // Offset 0x80
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12);
+        assert_eq!(gb.memory.read_byte(0xFF80), 0x42); // Stored at 0xFF00 + 0x80
+        assert_eq!(gb.cpu.pc, 0x0102);
+    }
+
+    #[test]
+    fn test_ldh_n_a_io_port() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x91;
+        gb.memory.write_byte(0x0100, 0xE0); // LDH (n),A
+        gb.memory.write_byte(0x0101, 0x07); // Offset 0x07 (Timer control)
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.memory.read_byte(0xFF07), 0x91); // Stored at I/O port
+        assert_eq!(gb.cpu.pc, 0x0102);
+    }
+
+    #[test]
+    fn test_ldh_a_n() {
+        let mut gb = GameBoy::new();
+        gb.memory.write_byte(0xFF90, 0x55); // Pre-populate high memory
+        gb.memory.write_byte(0x0100, 0xF0); // LDH A,(n)
+        gb.memory.write_byte(0x0101, 0x90); // Offset 0x90
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 12);
+        assert_eq!(gb.cpu.registers.a, 0x55); // Loaded from 0xFF00 + 0x90
+        assert_eq!(gb.cpu.pc, 0x0102);
+    }
+
+    #[test]
+    fn test_ldh_a_n_io_port() {
+        let mut gb = GameBoy::new();
+        gb.memory.write_byte(0xFF44, 0x90); // LY register (scanline)
+        gb.memory.write_byte(0x0100, 0xF0); // LDH A,(n)
+        gb.memory.write_byte(0x0101, 0x44); // Offset 0x44
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x90); // Loaded from I/O port
+        assert_eq!(gb.cpu.pc, 0x0102);
+    }
+
+    #[test]
+    fn test_ldh_c_a() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0x77;
+        gb.cpu.registers.c = 0x10; // Offset in C register
+        gb.memory.write_byte(0x0100, 0xE2); // LDH (C),A
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.memory.read_byte(0xFF10), 0x77); // Stored at 0xFF00 + C
+        assert_eq!(gb.cpu.pc, 0x0101);
+    }
+
+    #[test]
+    fn test_ldh_c_a_varying_offset() {
+        let mut gb = GameBoy::new();
+        gb.cpu.registers.a = 0xAB;
+
+        // Test with different C values
+        gb.cpu.registers.c = 0x00; // Write to 0xFF00
+        gb.memory.write_byte(0x0100, 0xE2); // LDH (C),A
+        gb.cpu.pc = 0x0100;
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.memory.read_byte(0xFF00), 0xAB);
+
+        gb.cpu.registers.c = 0xFF; // Write to 0xFFFF
+        gb.cpu.pc = 0x0100;
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.memory.read_byte(0xFFFF), 0xAB);
+    }
+
+    #[test]
+    fn test_ldh_a_c() {
+        let mut gb = GameBoy::new();
+        gb.memory.write_byte(0xFF42, 0x88); // Pre-populate high memory
+        gb.cpu.registers.c = 0x42; // Offset in C register
+        gb.memory.write_byte(0x0100, 0xF2); // LDH A,(C)
+        let cycles = gb.cpu.execute(&mut gb.memory);
+        assert_eq!(cycles, 8);
+        assert_eq!(gb.cpu.registers.a, 0x88); // Loaded from 0xFF00 + C
+        assert_eq!(gb.cpu.pc, 0x0101);
+    }
+
+    #[test]
+    fn test_ldh_a_c_io_registers() {
+        let mut gb = GameBoy::new();
+        gb.memory.write_byte(0xFF0F, 0x1F); // Interrupt flags
+        gb.cpu.registers.c = 0x0F;
+        gb.memory.write_byte(0x0100, 0xF2); // LDH A,(C)
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x1F); // Loaded from IF register
+    }
+
+    #[test]
+    fn test_ldh_roundtrip() {
+        let mut gb = GameBoy::new();
+
+        // Write using LDH (n),A
+        gb.cpu.registers.a = 0x99;
+        gb.memory.write_byte(0x0100, 0xE0); // LDH (n),A
+        gb.memory.write_byte(0x0101, 0x50);
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.memory.read_byte(0xFF50), 0x99);
+
+        // Clear A
+        gb.cpu.registers.a = 0x00;
+
+        // Read back using LDH A,(n)
+        gb.memory.write_byte(0x0102, 0xF0); // LDH A,(n)
+        gb.memory.write_byte(0x0103, 0x50);
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0x99); // Successfully read back
+    }
+
+    #[test]
+    fn test_ldh_c_roundtrip() {
+        let mut gb = GameBoy::new();
+
+        // Write using LDH (C),A
+        gb.cpu.registers.a = 0xCC;
+        gb.cpu.registers.c = 0x8A;
+        gb.memory.write_byte(0x0100, 0xE2); // LDH (C),A
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.memory.read_byte(0xFF8A), 0xCC);
+
+        // Clear A
+        gb.cpu.registers.a = 0x00;
+
+        // Read back using LDH A,(C)
+        gb.cpu.pc = 0x0101;
+        gb.memory.write_byte(0x0101, 0xF2); // LDH A,(C)
+        gb.cpu.execute(&mut gb.memory);
+        assert_eq!(gb.cpu.registers.a, 0xCC); // Successfully read back
+    }
 }

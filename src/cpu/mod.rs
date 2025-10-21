@@ -1272,6 +1272,36 @@ impl Cpu {
         8
     }
 
+    // LDH (n),A or LD ($FF00+n),A - Store A to high memory (I/O ports)
+    fn ldh_n_a(&mut self, memory: &mut Memory) -> u8 {
+        let offset = self.fetch_byte(memory);
+        let addr = 0xFF00 | u16::from(offset);
+        memory.write_byte(addr, self.registers.a);
+        12
+    }
+
+    // LDH A,(n) or LD A,($FF00+n) - Load A from high memory (I/O ports)
+    fn ldh_a_n(&mut self, memory: &Memory) -> u8 {
+        let offset = self.fetch_byte(memory);
+        let addr = 0xFF00 | u16::from(offset);
+        self.registers.a = memory.read_byte(addr);
+        12
+    }
+
+    // LDH (C),A or LD ($FF00+C),A - Store A to high memory using C as offset
+    fn ldh_c_a(&mut self, memory: &mut Memory) -> u8 {
+        let addr = 0xFF00 | u16::from(self.registers.c);
+        memory.write_byte(addr, self.registers.a);
+        8
+    }
+
+    // LDH A,(C) or LD A,($FF00+C) - Load A from high memory using C as offset
+    fn ldh_a_c(&mut self, memory: &Memory) -> u8 {
+        let addr = 0xFF00 | u16::from(self.registers.c);
+        self.registers.a = memory.read_byte(addr);
+        8
+    }
+
     // LD (nn),SP - Store SP to memory at 16-bit address
     fn ld_nn_sp(&mut self, memory: &mut Memory) -> u8 {
         let addr = self.fetch_word(memory);
