@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Game Boy emulator written in Rust. The CPU instruction set is 100% complete (all 446 opcodes implemented: 190 main + 256 CB-prefixed). The next phase is implementing hardware features (timer, interrupts, PPU).
+This is a Game Boy emulator written in Rust. The CPU instruction set is 100% complete (all 446 opcodes implemented: 190 main + 256 CB-prefixed). The timer system is fully implemented with interrupt generation. The next phase is completing the interrupt system (IME, interrupt dispatch) and implementing the PPU.
 
 ## Build and Test Commands
 
@@ -12,7 +12,7 @@ This is a Game Boy emulator written in Rust. The CPU instruction set is 100% com
 # Build the project
 cargo build
 
-# Run tests (118 tests covering all CPU instructions)
+# Run tests (187 tests: 118 CPU + 38 timer + 14 memory + 7 gameboy + 10 other)
 cargo test
 
 # Run a specific test
@@ -32,17 +32,19 @@ cargo run <rom_file> [log_file]
 
 ```
 src/
-├── main.rs          - CLI entry point, GameBoy struct integration, 118 tests
+├── main.rs          - CLI entry point, GameBoy struct integration, 118 CPU tests
 ├── cpu/
 │   ├── mod.rs       - CPU struct, all instruction implementations
 │   ├── registers.rs - Register structures (8-bit, 16-bit pairs, flags)
 │   └── instructions.rs - Opcode dispatcher (execute() function)
 ├── memory/
-│   └── mod.rs       - 64KB address space, cartridge integration
+│   └── mod.rs       - 64KB address space, cartridge + timer integration, 14 tests
 ├── cartridge/
 │   └── mod.rs       - ROM loading, MBC1 implementation, header parsing
+├── timer/
+│   └── mod.rs       - Timer implementation (DIV, TIMA, TMA, TAC), 38 tests
 └── gameboy/
-    └── mod.rs       - Main GameBoy struct, ties CPU + Memory together
+    └── mod.rs       - Main GameBoy struct, timer integration, 7 interrupt tests
 ```
 
 ### Key Design Patterns
@@ -71,8 +73,10 @@ Memory reads/writes are routed based on address ranges:
 - `0xE000-0xFDFF`: Echo RAM (mirror of Work RAM)
 - `0xFE00-0xFE9F`: OAM (Object Attribute Memory)
 - `0xFF00-0xFF7F`: I/O Registers
+  - `0xFF04-0xFF07`: Timer registers (routed to timer module)
+  - `0xFF0F`: IF (Interrupt Flag) register
 - `0xFF80-0xFFFE`: High RAM (HRAM)
-- `0xFFFF`: Interrupt Enable register
+- `0xFFFF`: IE (Interrupt Enable) register
 
 ### Cartridge System
 
@@ -80,6 +84,25 @@ Cartridges are loaded separately and integrated into Memory via `load_cartridge(
 - ROM banking (MBC1: switchable 16KB banks)
 - RAM banking (MBC1: switchable 8KB banks)
 - Bank switching via writes to ROM address space
+
+### Timer System
+
+The timer module implements all Game Boy timer hardware:
+- **DIV (0xFF04)**: Divider register, increments every 256 CPU cycles, resets on any write
+- **TIMA (0xFF05)**: Timer counter, increments at configurable frequency
+- **TMA (0xFF06)**: Timer modulo, loaded into TIMA when it overflows
+- **TAC (0xFF07)**: Timer control (bit 2 = enable, bits 0-1 = frequency selection)
+- Four frequencies: 4096 Hz (1024 cycles), 262144 Hz (16 cycles), 65536 Hz (64 cycles), 16384 Hz (256 cycles)
+- On TIMA overflow: TIMA = TMA and timer interrupt flag (bit 2 of IF at 0xFF0F) is set
+
+### GameBoy Integration and Interrupts
+
+The `GameBoy::step()` method:
+1. Executes one CPU instruction (returns cycle count)
+2. Ticks the timer with the cycle count
+3. If timer returns interrupt flag, sets bit 2 of IF register (0xFF0F)
+
+**Interrupt Status**: Timer interrupt generation is implemented. Full interrupt dispatch (IME, interrupt vectors) is not yet implemented.
 
 ### GameBoy-Doctor Logging
 
@@ -94,11 +117,15 @@ The emulator can output CPU state logs in gameboy-doctor format for validation:
 - All 446 CPU instructions (100% of Game Boy instruction set)
 - Cartridge loading and MBC1 memory bank controller
 - CPU state logging for validation
-- 118 comprehensive tests
+- Timer system (DIV, TIMA, TMA, TAC) with interrupt generation
+- Timer interrupt flag setting (bit 2 of IF register at 0xFF0F)
+- 187 comprehensive tests (118 CPU + 38 timer + 14 memory + 7 gameboy + 10 other)
+
+**Partially Implemented:**
+- Interrupt system: Timer sets IF flag, but IME (Interrupt Master Enable) and interrupt dispatch not yet implemented
 
 **Not Yet Implemented:**
-- Timer system (DIV, TIMA, TMA, TAC registers) - see `docs/TIMER_IMPLEMENTATION_GUIDE.md`
-- Interrupt handling (VBlank, LCD, Timer, Serial, Joypad)
+- Full interrupt handling (IME flag, interrupt vectors, interrupt dispatch)
 - PPU (Picture Processing Unit) - graphics rendering
 - LCD registers (LCDC, STAT, LY, etc.)
 - Joypad input
@@ -116,33 +143,44 @@ When adding instructions (not needed - CPU is complete):
 
 ## Adding Hardware Features
 
-**Current Priority: Timer System**
+**Current Priority: Full Interrupt System**
 
-See `docs/TIMER_IMPLEMENTATION_GUIDE.md` for step-by-step guide.
+The timer system is complete. Next step is implementing full interrupt handling.
 
 General pattern for hardware features:
 1. Create new module in `src/<feature>/mod.rs`
 2. Integrate with Memory system for I/O register access (0xFF00-0xFF7F)
 3. Update `GameBoy::step()` to tick the new component with CPU cycles
-4. Handle any interrupt requests (will need interrupt system first)
+4. Set interrupt flags in IF register (0xFF0F) when interrupts occur
+
+**Timer Implementation Example** (already complete):
+- `src/timer/mod.rs` - Timer struct with DIV, TIMA, TMA, TAC
+- Memory routes 0xFF04-0xFF07 to timer
+- `GameBoy::step()` calls `timer.tick(cycles)` after CPU instruction
+- Timer overflow returns `true`, which sets bit 2 of IF register
 
 ## Testing Strategy
 
-Tests are in `src/main.rs` under `#[cfg(test)]`. Each test:
+**CPU Tests** are in `src/main.rs` under `#[cfg(test)]`. Each test:
 1. Creates a GameBoy instance
 2. Writes opcodes/data directly to memory
 3. Calls `cpu.execute()`
 4. Asserts register/memory state and cycle count
 
-For hardware features, test timing-critical behavior (e.g., timer overflow at exact cycle count).
+**Hardware Feature Tests** are in their respective modules:
+- `src/timer/mod.rs` - Timer-specific behavior tests (38 tests)
+- `src/memory/mod.rs` - Memory routing tests (14 tests)
+- `src/gameboy/mod.rs` - Integration tests (7 tests)
+
+For hardware features, test timing-critical behavior (e.g., timer overflow at exact cycle count) and memory routing boundaries.
 
 ## Reference Documentation
 
 - `PROJECT.md` - Detailed project state, completed features, next steps
-- `docs/TIMER_REFERENCE.md` - How the Game Boy timer hardware works
-- `docs/TIMER_IMPLEMENTATION_GUIDE.md` - Step-by-step implementation guide
+- `docs/TIMER_REFERENCE.md` - How the Game Boy timer hardware works (reference)
+- `docs/TIMER_IMPLEMENTATION_GUIDE.md` - Timer implementation guide (completed)
 - `The Cycle-Accurate Game Boy Docs.pdf` - Hardware reference (in project root)
-- Pan Docs: https://gbdev.io/pandocs/
+- Pan Docs: https://gbdev.io/pandocs/ - Comprehensive Game Boy documentation
 
 ## Clippy Configuration
 

@@ -166,15 +166,43 @@
   - Optional CPU log file for testing
   - Runs emulator for configurable number of instructions
 
+### 16. Timer System ✅
+**Files**: `src/timer/mod.rs`, `src/memory/mod.rs`, `src/gameboy/mod.rs`
+- **Timer Module Implementation**:
+  - DIV register (0xFF04) - Divider register, increments at 16384 Hz
+  - TIMA register (0xFF05) - Timer counter, increments at programmable frequency
+  - TMA register (0xFF06) - Timer modulo, loaded into TIMA on overflow
+  - TAC register (0xFF07) - Timer control (enable/disable, frequency selection)
+  - Four configurable frequencies: 4096 Hz, 262144 Hz, 65536 Hz, 16384 Hz
+  - Overflow detection and TIMA reload from TMA
+  - Timer interrupt generation on TIMA overflow
+- **Memory Integration**:
+  - Timer registers accessible at 0xFF04-0xFF07
+  - Proper memory routing for timer register reads/writes
+  - Boundary testing (0xFF03 and 0xFF08 correctly excluded)
+  - 14 memory integration tests
+- **GameBoy Integration**:
+  - Timer tick called after each CPU instruction with cycle count
+  - Timer interrupt sets bit 2 of IF register (0xFF0F)
+  - Proper interrupt flag preservation
+  - 7 interrupt integration tests
+- **Comprehensive Testing**:
+  - 38 timer-specific tests covering all timer behavior
+  - 14 memory routing tests
+  - 7 interrupt flag tests
+  - Tests for DIV, TIMA, TMA, TAC operation
+  - Overflow behavior tests
+  - Frequency tests for all 4 timer speeds
+  - Enable/disable tests
+  - Integration tests with variable tick sizes
+
 ## Currently Working On 🔧
 
-**Phase 2: CPU Instructions - COMPLETE! ✅**
-- **Total opcodes implemented: 446 opcodes** (190 main + 256 CB-prefixed)
-- **All 118 tests passing** (92 main instruction tests + 26 CB instruction tests)
-- **100% of Game Boy CPU instruction set complete!**
-- Every single instruction the Game Boy CPU can execute is now implemented
-- No clippy warnings
-- Ready for hardware features (interrupts, timer, PPU)
+**Phase 3: Hardware Features - Timer Complete! ✅**
+- **Timer system fully implemented and tested**
+- **Total tests: 187** (118 CPU + 38 timer + 14 memory + 7 gameboy + 10 other)
+- **All tests passing** ✅
+- Ready for full interrupt system implementation
 
 ## Next Steps 📋
 
@@ -191,21 +219,24 @@
 8. ~~**CB-Prefixed Instructions**~~ ✅ - Bit operations (256 opcodes: rotate, shift, bit test, set, res)
 
 **Next Phase - Hardware Features:**
-With the CPU instruction set and cartridge support complete, the next priorities are:
-1. **Testing with Real ROMs** - Test CPU implementation with gameboy-doctor using actual Game Boy ROMs
-2. **Interrupt System** - Implement interrupt handling (VBlank, LCD, Timer, Serial, Joypad)
-3. **Timer** - Implement DIV, TIMA, TMA, TAC registers
-4. **PPU (Picture Processing Unit)** - Start rendering graphics
-5. **Joypad** - Input handling
+With the CPU instruction set, cartridge support, and timer complete, the next priorities are:
+1. **Full Interrupt System** - Complete interrupt handling (VBlank, LCD, Timer, Serial, Joypad)
+   - Timer interrupt flag already sets bit 2 of IF register ✅
+   - Need to implement: IME (Interrupt Master Enable), interrupt dispatch, jump to interrupt vectors
+2. **Testing with Real ROMs** - Test CPU implementation with gameboy-doctor using actual Game Boy ROMs
+3. **PPU (Picture Processing Unit)** - Start rendering graphics
+4. **Joypad** - Input handling
 
 ## Files Modified
 
-- `src/main.rs` - Main GameBoy struct, ROM loading, CPU logging, CLI interface (**118 tests total**)
+- `src/main.rs` - Main GameBoy struct, ROM loading, CPU logging, CLI interface (**118 CPU tests**)
 - `src/cpu/mod.rs` - CPU struct, instruction implementations, interrupt control (**446 opcodes implemented**)
 - `src/cpu/registers.rs` - Register definitions
-- `src/memory/mod.rs` - Memory implementation with cartridge integration (Vec-based, heap allocated)
+- `src/memory/mod.rs` - Memory implementation with cartridge and timer integration (**14 timer routing tests**)
 - `src/cpu/instructions.rs` - execute() and opcode dispatch (main opcodes + CB-prefixed handler)
 - `src/cartridge/mod.rs` - Cartridge ROM/RAM loading, MBC1 implementation, header parsing
+- `src/timer/mod.rs` - Timer implementation (DIV, TIMA, TMA, TAC) (**38 timer tests**)
+- `src/gameboy/mod.rs` - GameBoy integration, timer tick, interrupt flag management (**7 interrupt tests**)
 
 ## Key Documentation Reference
 
@@ -237,8 +268,8 @@ Using "The Cycle-Accurate Game Boy Docs (1).pdf" in project root
 - ✅ Complete instruction set (446 opcodes - 100% complete!)
 - ✅ Implement CB-prefixed instructions (256 additional opcodes - ALL DONE!)
 - ✅ Cartridge/MBC support (ROM loading, MBC1, CPU state logging)
-- ⏳ Timer system
-- ⏳ Interrupts
+- ✅ Timer system (DIV, TIMA, TMA, TAC with interrupt generation)
+- ⏳ Full interrupt system (IME, interrupt dispatch, vectors)
 - ⏳ PPU (Picture Processing Unit)
 - ⏳ Joypad
 
@@ -248,7 +279,9 @@ Using "The Cycle-Accurate Game Boy Docs (1).pdf" in project root
 ```bash
 cargo test
 ```
-**118 tests passing** for:
+**187 tests passing** for:
+
+**CPU Tests (118):**
 - Register operations
 - Memory read/write
 - Basic instruction execution
@@ -268,12 +301,36 @@ cargo test
 - Miscellaneous (DAA for BCD, CPL, SCF, CCF)
 - Interrupt control (DI, EI)
 - LDI/LDD sequences for memory copying
-- **CB-prefixed instructions** (RLC, RRC, RL, RR, SLA, SRA, SRL, SWAP, BIT, SET, RES)
-- **Bit operations on registers and memory** (HL)
-- **Flag handling for all CB operations**
+- CB-prefixed instructions (RLC, RRC, RL, RR, SLA, SRA, SRL, SWAP, BIT, SET, RES)
+- Bit operations on registers and memory (HL)
+- Flag handling for all CB operations
 - Edge cases (carry, half-carry, borrow, zero flag)
-- Flag handling verification
 - Cycle counting accuracy
+
+**Timer Tests (38):**
+- DIV register operation (increment, reset, wrap-around)
+- TIMA register operation (increment at all frequencies, enable/disable)
+- TMA register operation (overflow reload, mid-operation changes)
+- TAC register operation (enable bit, frequency selection)
+- Timer overflow and interrupt generation
+- Multiple overflow scenarios
+- Integration with variable cycle counts
+
+**Memory Integration Tests (14):**
+- Timer register access at correct addresses (0xFF04-0xFF07)
+- Memory boundary testing (0xFF03, 0xFF08 excluded)
+- Register independence and isolation
+- Read/write operations for all timer registers
+
+**GameBoy Integration Tests (7):**
+- Timer interrupt sets IF register bit 2
+- IF register bit preservation
+- Multiple overflow interrupt behavior
+- Disabled timer (no interrupts)
+- Different timer frequencies
+
+**Other Tests (10):**
+- GameBoy creation and initialization
 
 ### No Clippy Warnings ✅
 ```bash
@@ -338,8 +395,8 @@ All 446 CPU instructions (190 main + 256 CB-prefixed) are now implemented!
 - [✅] ~~CB-prefixed instructions~~ - ALL COMPLETE
 - [✅] ~~Cartridge ROM loading~~ - COMPLETE (with MBC1 support)
 - [✅] ~~CPU state logging~~ - COMPLETE (gameboy-doctor format)
-- [ ] No interrupt handling
-- [ ] No timer
+- [✅] ~~Timer~~ - COMPLETE (DIV, TIMA, TMA, TAC with interrupt generation)
+- [🔄] Interrupt handling - PARTIAL (timer sets IF flag, need IME and dispatch)
 - [ ] No PPU
 - [ ] No serial port
 - [ ] No sound (APU)
@@ -361,10 +418,12 @@ All 446 CPU instructions (190 main + 256 CB-prefixed) are now implemented!
 
 ---
 
-**Last Updated**: Session ending after implementing cartridge support and ROM loading with CPU state logging
+**Last Updated**: Session ending after implementing complete timer system with interrupt integration
 **Major Milestones**:
-- CPU instruction set 100% complete! All 446 opcodes implemented with 118 tests passing.
+- CPU instruction set 100% complete! All 446 opcodes implemented
 - Cartridge and ROM loading complete with MBC1 support
 - CPU state logging in gameboy-doctor format for validation
-- Command-line interface for loading ROMs and logging
-**Next Session**: Test with actual Game Boy ROMs using gameboy-doctor, then implement hardware features (interrupts, timer, PPU)
+- **Timer system complete with all 4 registers (DIV, TIMA, TMA, TAC)**
+- **Timer interrupt generation integrated with IF register**
+- **187 tests passing** (118 CPU + 38 timer + 14 memory + 7 gameboy + 10 other)
+**Next Session**: Implement full interrupt system (IME, interrupt dispatch, vectors), then test with real ROMs
