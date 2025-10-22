@@ -2,14 +2,12 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-/// Cartridge types based on header byte 0x0147
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CartridgeType {
     RomOnly,
     Mbc1,
     Mbc1Ram,
     Mbc1RamBattery,
-    // Add more as needed
     Unknown(u8),
 }
 
@@ -25,7 +23,6 @@ impl From<u8> for CartridgeType {
     }
 }
 
-/// Cartridge header information
 #[derive(Debug)]
 pub struct CartridgeHeader {
     pub title: String,
@@ -35,7 +32,7 @@ pub struct CartridgeHeader {
 }
 
 impl CartridgeHeader {
-    /// Parse header from ROM data
+    #[allow(clippy::similar_names)]
     pub fn from_rom(rom: &[u8]) -> Result<Self, String> {
         if rom.len() < 0x0150 {
             return Err("ROM too small to contain valid header".to_string());
@@ -67,12 +64,12 @@ impl CartridgeHeader {
 
         // RAM size at 0x0149
         let ram_size = match rom[0x0149] {
-            0x00 => 0,      // No RAM
-            0x01 => 2048,   // 2KB (unused)
-            0x02 => 8192,   // 8KB (1 bank)
-            0x03 => 32768,  // 32KB (4 banks)
-            0x04 => 131072, // 128KB (16 banks)
-            0x05 => 65536,  // 64KB (8 banks)
+            0x00 => 0,       // No RAM
+            0x01 => 2048,    // 2KB (unused)
+            0x02 => 8192,    // 8KB (1 bank)
+            0x03 => 32_768,  // 32KB (4 banks)
+            0x04 => 131_072, // 128KB (16 banks)
+            0x05 => 65_536,  // 64KB (8 banks)
             _ => return Err(format!("Invalid RAM size: 0x{:02X}", rom[0x0149])),
         };
 
@@ -85,7 +82,6 @@ impl CartridgeHeader {
     }
 }
 
-/// Main cartridge structure
 pub struct Cartridge {
     rom: Vec<u8>,
     ram: Vec<u8>,
@@ -97,7 +93,7 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    /// Load a cartridge from a file
+    #[allow(clippy::similar_names)]
     pub fn load<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let rom = fs::read(path)?;
 
@@ -106,7 +102,11 @@ impl Cartridge {
 
         println!("Loaded ROM: {}", header.title);
         println!("Type: {:?}", header.cartridge_type);
-        println!("ROM size: {} bytes ({} banks)", header.rom_size, header.rom_size / 16384);
+        println!(
+            "ROM size: {} bytes ({} banks)",
+            header.rom_size,
+            header.rom_size / 16384
+        );
         println!("RAM size: {} bytes", header.ram_size);
 
         let ram = vec![0; header.ram_size];
@@ -122,7 +122,6 @@ impl Cartridge {
         })
     }
 
-    /// Read a byte from the cartridge
     pub fn read_byte(&self, addr: u16) -> u8 {
         match addr {
             // ROM Bank 0 (0x0000-0x3FFF)
@@ -156,20 +155,20 @@ impl Cartridge {
         }
     }
 
-    /// Write a byte to the cartridge (for MBC control)
     pub fn write_byte(&mut self, addr: u16, value: u8) {
         match self.header.cartridge_type {
-            CartridgeType::RomOnly => {} // No writes for ROM-only
+            CartridgeType::RomOnly => {
+                todo!()
+            } // No writes for ROM-only
 
             CartridgeType::Mbc1 | CartridgeType::Mbc1Ram | CartridgeType::Mbc1RamBattery => {
                 self.write_mbc1(addr, value);
             }
 
-            _ => {} // Other MBC types not implemented yet
+            CartridgeType::Unknown(_) => {} // Other MBC types not implemented yet
         }
     }
 
-    /// Handle MBC1 writes
     fn write_mbc1(&mut self, addr: u16, value: u8) {
         match addr {
             // RAM Enable (0x0000-0x1FFF)
@@ -215,7 +214,6 @@ impl Cartridge {
         }
     }
 
-    /// Get cartridge header
     pub fn header(&self) -> &CartridgeHeader {
         &self.header
     }

@@ -9,4 +9,5 @@ edition = "2024"
 must_use_candidate = { level = "allow", priority = 1 }
 verbose_bit_mask = { level = "allow", priority = 1 }
 unused_self = { level = "allow", priority = 1 }
+missing_errors_doc = { level = "allow", priority = 1 }
 pedantic = "warn"

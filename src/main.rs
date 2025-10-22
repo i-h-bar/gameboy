@@ -1,7 +1,7 @@
 pub mod cartridge;
 pub mod cpu;
-pub mod memory;
 mod gameboy;
+pub mod memory;
 mod timer;
 
 use crate::gameboy::GameBoy;
@@ -23,17 +23,17 @@ fn main() {
 
     // Load ROM
     if let Err(e) = game.load_rom(rom_path) {
-        eprintln!("Error loading ROM: {}", e);
+        eprintln!("Error loading ROM: {e}");
         std::process::exit(1);
     }
 
     // Enable logging if requested
     if let Some(log_path) = log_path {
         if let Err(e) = game.enable_logging(log_path) {
-            eprintln!("Error creating log file: {}", e);
+            eprintln!("Error creating log file: {e}");
             std::process::exit(1);
         }
-        println!("Logging enabled to: {}", log_path);
+        println!("Logging enabled to: {log_path}");
     }
 
     game.power_on();

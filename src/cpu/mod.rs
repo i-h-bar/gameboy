@@ -1016,7 +1016,8 @@ impl Cpu {
         self.sp = self.sp.wrapping_add(1);
         let high = memory.read_byte(self.sp);
         self.sp = self.sp.wrapping_add(1);
-        self.registers.set_bc((u16::from(high) << 8) | u16::from(low));
+        self.registers
+            .set_bc((u16::from(high) << 8) | u16::from(low));
         12
     }
 
@@ -1025,7 +1026,8 @@ impl Cpu {
         self.sp = self.sp.wrapping_add(1);
         let high = memory.read_byte(self.sp);
         self.sp = self.sp.wrapping_add(1);
-        self.registers.set_de((u16::from(high) << 8) | u16::from(low));
+        self.registers
+            .set_de((u16::from(high) << 8) | u16::from(low));
         12
     }
 
@@ -1034,7 +1036,8 @@ impl Cpu {
         self.sp = self.sp.wrapping_add(1);
         let high = memory.read_byte(self.sp);
         self.sp = self.sp.wrapping_add(1);
-        self.registers.set_hl((u16::from(high) << 8) | u16::from(low));
+        self.registers
+            .set_hl((u16::from(high) << 8) | u16::from(low));
         12
     }
 
@@ -1043,7 +1046,8 @@ impl Cpu {
         self.sp = self.sp.wrapping_add(1);
         let high = memory.read_byte(self.sp);
         self.sp = self.sp.wrapping_add(1);
-        self.registers.set_af((u16::from(high) << 8) | u16::from(low));
+        self.registers
+            .set_af((u16::from(high) << 8) | u16::from(low));
         12
     }
 

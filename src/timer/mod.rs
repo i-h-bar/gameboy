@@ -6,6 +6,12 @@ pub struct Timer {
     tima_counter: u16,
 }
 
+impl Default for Timer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Timer {
     pub fn new() -> Self {
         Self {
@@ -19,10 +25,10 @@ impl Timer {
 
     pub fn tick(&mut self, cycles: u8) -> bool {
         let mut interrupted = false;
-        self.div_counter = self.div_counter.wrapping_add(cycles as u16);
+        self.div_counter = self.div_counter.wrapping_add(u16::from(cycles));
 
         if self.is_timer_enabled() {
-            self.tima_counter = self.tima_counter.wrapping_add(cycles as u16);
+            self.tima_counter = self.tima_counter.wrapping_add(u16::from(cycles));
             let frequency = self.get_tima_frequency();
 
             if self.tima_counter >= frequency {
@@ -47,7 +53,7 @@ impl Timer {
             0xFF05 => self.tima,
             0xFF06 => self.tma,
             0xFF07 => self.tac,
-            _ => panic!("Read from none timer register in the timer {:4x}", address),
+            _ => panic!("Read from none timer register in the timer {address:4x}"),
         }
     }
 
@@ -58,7 +64,7 @@ impl Timer {
             0xFF05 => self.tima = value,
             0xFF06 => self.tma = value,
             0xFF07 => self.tac = value,
-            _ => panic!("Write to none timer register in the timer {:4x}", address),
+            _ => panic!("Write to none timer register in the timer {address:4x}"),
         }
     }
 
@@ -277,20 +283,35 @@ mod tests {
 
             // Bit 2 = 0 (disabled)
             timer.write_register(0xFF07, 0x00);
-            assert!(!timer.is_timer_enabled(), "Timer should be disabled when bit 2 = 0");
+            assert!(
+                !timer.is_timer_enabled(),
+                "Timer should be disabled when bit 2 = 0"
+            );
 
             timer.write_register(0xFF07, 0x03);
-            assert!(!timer.is_timer_enabled(), "Timer should be disabled when bit 2 = 0");
+            assert!(
+                !timer.is_timer_enabled(),
+                "Timer should be disabled when bit 2 = 0"
+            );
 
             // Bit 2 = 1 (enabled)
             timer.write_register(0xFF07, 0x04);
-            assert!(timer.is_timer_enabled(), "Timer should be enabled when bit 2 = 1");
+            assert!(
+                timer.is_timer_enabled(),
+                "Timer should be enabled when bit 2 = 1"
+            );
 
             timer.write_register(0xFF07, 0x07);
-            assert!(timer.is_timer_enabled(), "Timer should be enabled when bit 2 = 1");
+            assert!(
+                timer.is_timer_enabled(),
+                "Timer should be enabled when bit 2 = 1"
+            );
 
             timer.write_register(0xFF07, 0x05);
-            assert!(timer.is_timer_enabled(), "Timer should be enabled when bit 2 = 1");
+            assert!(
+                timer.is_timer_enabled(),
+                "Timer should be enabled when bit 2 = 1"
+            );
         }
 
         #[test]
@@ -634,7 +655,11 @@ mod tests {
                 interrupt_count, 1,
                 "Should fire interrupt once (FF->00 overflow)"
             );
-            assert_eq!(timer.read_register(0xFF05), 0x01, "TIMA should be 0x01 after 3 increments");
+            assert_eq!(
+                timer.read_register(0xFF05),
+                0x01,
+                "TIMA should be 0x01 after 3 increments"
+            );
         }
     }
 
