@@ -2,6 +2,7 @@ pub mod cartridge;
 pub mod cpu;
 pub mod memory;
 mod gameboy;
+mod timer;
 
 use crate::gameboy::GameBoy;
 

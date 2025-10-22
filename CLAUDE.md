@@ -141,7 +141,7 @@ For hardware features, test timing-critical behavior (e.g., timer overflow at ex
 - `PROJECT.md` - Detailed project state, completed features, next steps
 - `docs/TIMER_REFERENCE.md` - How the Game Boy timer hardware works
 - `docs/TIMER_IMPLEMENTATION_GUIDE.md` - Step-by-step implementation guide
-- `The Cycle-Accurate Game Boy Docs (1).pdf` - Hardware reference (in project root)
+- `The Cycle-Accurate Game Boy Docs.pdf` - Hardware reference (in project root)
 - Pan Docs: https://gbdev.io/pandocs/
 
 ## Clippy Configuration
