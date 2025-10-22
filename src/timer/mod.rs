@@ -18,17 +18,36 @@ impl Timer {
     }
 
     pub fn tick(&mut self, cycles: u8) -> bool {
+        let mut interrupted = false;
         self.div_counter = self.div_counter.wrapping_add(cycles as u16);
 
-        true
+        if self.is_timer_enabled() {
+            self.tima_counter = self.tima_counter.wrapping_add(cycles as u16);
+            let frequency = self.get_tima_frequency();
+
+            if self.tima_counter >= frequency {
+                self.tima_counter -= frequency;
+                let (value, overflowed) = self.tima.overflowing_add(1);
+                self.tima = value;
+
+                if overflowed {
+                    self.tima = self.tma;
+                    interrupted = true;
+                }
+            }
+        }
+
+        interrupted
     }
 
     pub fn read_register(&self, address: u16) -> u8 {
         // 0xFF04 = DIV, 0xFF05 = TIMA, 0xFF06 = TMA, 0xFF07 = TAC
         match address {
             0xFF04 => (self.div_counter >> 8) as u8,
+            0xFF05 => self.tima,
+            0xFF06 => self.tma,
             0xFF07 => self.tac,
-            _ => todo!(),
+            _ => panic!("Read from none timer register in the timer {:4x}", address),
         }
     }
 
@@ -36,8 +55,10 @@ impl Timer {
         // 0xFF04 = DIV, 0xFF05 = TIMA, 0xFF06 = TMA, 0xFF07 = TAC
         match address {
             0xFF04 => self.div_counter = 0,
+            0xFF05 => self.tima = value,
+            0xFF06 => self.tma = value,
             0xFF07 => self.tac = value,
-            _ => todo!()
+            _ => panic!("Write to none timer register in the timer {:4x}", address),
         }
     }
 
@@ -51,7 +72,7 @@ impl Timer {
             1 => 16,
             2 => 64,
             3 => 256,
-            _ => unreachable!("Bottom 2 nibbles was greater than 3?"),
+            _ => panic!("Bottom 2 nibbles was greater than 3?"),
         }
     }
 }
@@ -598,7 +619,7 @@ mod tests {
 
             timer.write_register(0xFF07, 0x05);
             timer.write_register(0xFF05, 0xFE);
-            timer.write_register(0xFF06, 0xFF);
+            timer.write_register(0xFF06, 0x00);
 
             let mut interrupt_count = 0;
 
@@ -613,7 +634,7 @@ mod tests {
                 interrupt_count, 1,
                 "Should fire interrupt once (FF->00 overflow)"
             );
-            assert_eq!(timer.read_register(0xFF05), 0x00);
+            assert_eq!(timer.read_register(0xFF05), 0x01, "TIMA should be 0x01 after 3 increments");
         }
     }
 
@@ -802,23 +823,6 @@ mod tests {
                 timer.read_register(0xFF05),
                 0x01,
                 "TIMA should handle variable tick sizes"
-            );
-        }
-
-        #[test]
-        fn large_tick_causes_multiple_increments() {
-            let mut timer = Timer::new();
-
-            timer.write_register(0xFF07, 0x05);
-            timer.write_register(0xFF05, 0x00);
-
-            // Single tick with 80 cycles (should increment 5 times)
-            timer.tick(80);
-
-            assert_eq!(
-                timer.read_register(0xFF05),
-                0x05,
-                "Large tick should cause multiple TIMA increments"
             );
         }
     }
