@@ -34,11 +34,12 @@ impl Timer {
             if self.tima_counter >= frequency {
                 self.tima_counter -= frequency;
                 let (value, overflowed) = self.tima.overflowing_add(1);
-                self.tima = value;
 
                 if overflowed {
                     self.tima = self.tma;
                     interrupted = true;
+                } else {
+                    self.tima = value;
                 }
             }
         }
