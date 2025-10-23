@@ -40,9 +40,34 @@ impl GameBoy {
         self.cpu.registers.f.c = true;
     }
 
-    #[allow(clippy::many_single_char_names)]
     pub fn step(&mut self) {
         // Log CPU state before execution (gameboy-doctor format)
+        #[cfg(test)]
+        self.log();
+
+        // Execute instruction
+        let cycles = self.cpu.execute(&mut self.memory);
+        let timer_interrupt = self.memory.timer.tick(cycles);
+        if timer_interrupt {
+            let if_register = self.memory.read_byte(0xFF0F);
+            self.memory.write_byte(0xFF0F, if_register | 0x04);
+            // TODO: Implement interrupt system
+        }
+    }
+
+    /// Run the emulator for a number of instructions
+    pub fn run(&mut self, num_instructions: usize) {
+        for _ in 0..num_instructions {
+            if self.cpu.halted {
+                break;
+            }
+            self.step();
+        }
+    }
+
+    #[allow(clippy::many_single_char_names)]
+    #[cfg(test)]
+    fn log(&mut self) {
         if self.log_file.is_some() {
             let a = self.cpu.registers.a;
             let f = self.cpu.registers.f.to_u8();
@@ -68,25 +93,6 @@ impl GameBoy {
             if let Some(ref mut log) = self.log_file {
                 let _ = log.write_all(line.as_bytes());
             }
-        }
-
-        // Execute instruction
-        let cycles = self.cpu.execute(&mut self.memory);
-        let timer_interrupt = self.memory.timer.tick(cycles);
-        if timer_interrupt {
-            let if_register = self.memory.read_byte(0xFF0F);
-            self.memory.write_byte(0xFF0F, if_register | 0x04);
-            // TODO: Implement interrupt system
-        }
-    }
-
-    /// Run the emulator for a number of instructions
-    pub fn run(&mut self, num_instructions: usize) {
-        for _ in 0..num_instructions {
-            if self.cpu.halted {
-                break;
-            }
-            self.step();
         }
     }
 }
