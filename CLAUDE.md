@@ -12,7 +12,7 @@ This is a Game Boy emulator written in Rust. The CPU instruction set is 100% com
 # Build the project
 cargo build
 
-# Run tests (187 tests: 118 CPU + 38 timer + 14 memory + 7 gameboy + 10 other)
+# Run tests (215 tests: 146 CPU + 38 timer + 14 memory + 7 gameboy + 10 other)
 cargo test
 
 # Run a specific test
@@ -21,9 +21,13 @@ cargo test test_name
 # Run with clippy (pedantic mode enabled)
 cargo clippy
 
-# Run the emulator with a ROM
-cargo run <rom_file> [log_file]
-# Example: cargo run test_roms/cpu_instrs.test test.txt
+# Run the emulator with a ROM (normal mode)
+cargo run -- run <rom_file>
+# Example: cargo run -- run test_roms/cpu_instrs.gb
+
+# Run the emulator in test mode with logging (gameboy-doctor format)
+cargo run -- test <rom_file> <log_file>
+# Example: cargo run -- test test_roms/cpu_instrs.gb log.txt
 ```
 
 ## Architecture
@@ -32,7 +36,9 @@ cargo run <rom_file> [log_file]
 
 ```
 src/
-├── main.rs          - CLI entry point, GameBoy struct integration, 118 CPU tests
+├── main.rs          - CLI entry point using clap for argument parsing
+├── args/
+│   └── mod.rs       - CLI argument definitions (run/test subcommands)
 ├── cpu/
 │   ├── mod.rs       - CPU struct, all instruction implementations
 │   ├── registers.rs - Register structures (8-bit, 16-bit pairs, flags)
@@ -44,7 +50,7 @@ src/
 ├── timer/
 │   └── mod.rs       - Timer implementation (DIV, TIMA, TMA, TAC), 38 tests
 └── gameboy/
-    └── mod.rs       - Main GameBoy struct, timer integration, 7 interrupt tests
+    └── mod.rs       - Main GameBoy struct, timer integration, 146 CPU tests + 7 interrupt tests
 ```
 
 ### Key Design Patterns
@@ -104,22 +110,32 @@ The `GameBoy::step()` method:
 
 **Interrupt Status**: Timer interrupt generation is implemented. Full interrupt dispatch (IME, interrupt vectors) is not yet implemented.
 
-### GameBoy-Doctor Logging
+### Command Line Interface (Clap)
 
-The emulator can output CPU state logs in gameboy-doctor format for validation:
+The emulator uses `clap` for argument parsing with two subcommands:
+
+**Run mode** (`cargo run -- run <rom_file>`):
+- Loads and runs a ROM file
+- No logging output
+- Runs for 1 million instructions or until HALT
+
+**Test mode** (`cargo run -- test <rom_file> <log_file>`):
+- Loads and runs a ROM file
+- Outputs CPU state logs in gameboy-doctor format for validation
 - Format: `A:XX F:XX B:XX C:XX D:XX E:XX H:XX L:XX SP:XXXX PC:XXXX PCMEM:XX,XX,XX,XX`
-- Enable via second CLI argument
 - Logged before each instruction execution
+- Used for validating against gameboy-doctor test suite
 
 ## Implementation Status
 
 **Complete:**
 - All 446 CPU instructions (100% of Game Boy instruction set)
 - Cartridge loading and MBC1 memory bank controller
-- CPU state logging for validation
+- CPU state logging for validation (gameboy-doctor format)
+- Command line interface with clap (run/test subcommands)
 - Timer system (DIV, TIMA, TMA, TAC) with interrupt generation
 - Timer interrupt flag setting (bit 2 of IF register at 0xFF0F)
-- 187 comprehensive tests (118 CPU + 38 timer + 14 memory + 7 gameboy + 10 other)
+- 215 comprehensive tests (146 CPU + 38 timer + 14 memory + 7 gameboy + 10 other)
 
 **Partially Implemented:**
 - Interrupt system: Timer sets IF flag, but IME (Interrupt Master Enable) and interrupt dispatch not yet implemented
@@ -138,7 +154,7 @@ The emulator can output CPU state logs in gameboy-doctor format for validation:
 When adding instructions (not needed - CPU is complete):
 1. Add opcode case in `cpu/instructions.rs::execute_opcode()`
 2. Implement function in `cpu/mod.rs`
-3. Add test in `src/main.rs` test module
+3. Add test in `src/gameboy/mod.rs` test module
 4. Return correct cycle count
 
 ## Adding Hardware Features
@@ -161,24 +177,26 @@ General pattern for hardware features:
 
 ## Testing Strategy
 
-**CPU Tests** are in `src/main.rs` under `#[cfg(test)]`. Each test:
+**CPU Tests** are in `src/gameboy/mod.rs` under `#[cfg(test)]`. Each test:
 1. Creates a GameBoy instance
 2. Writes opcodes/data directly to memory
-3. Calls `cpu.execute()`
+3. Calls `cpu.execute(&mut gb.memory)`
 4. Asserts register/memory state and cycle count
 
 **Hardware Feature Tests** are in their respective modules:
+- `src/gameboy/mod.rs` - CPU instruction tests (146 tests) and integration tests (7 tests)
 - `src/timer/mod.rs` - Timer-specific behavior tests (38 tests)
 - `src/memory/mod.rs` - Memory routing tests (14 tests)
-- `src/gameboy/mod.rs` - Integration tests (7 tests)
 
 For hardware features, test timing-critical behavior (e.g., timer overflow at exact cycle count) and memory routing boundaries.
 
 ## Reference Documentation
 
 - `PROJECT.md` - Detailed project state, completed features, next steps
-- `docs/TIMER_REFERENCE.md` - How the Game Boy timer hardware works (reference)
+- `docs/TIMER_REFERENCE.md` - How the Game Boy timer hardware works
 - `docs/TIMER_IMPLEMENTATION_GUIDE.md` - Timer implementation guide (completed)
+- `docs/INTERRUPT_REFERENCE.md` - How the Game Boy interrupt system works
+- `docs/INTERRUPT_IMPLEMENTATION_GUIDE.md` - Interrupt implementation guide (ready to implement)
 - `The Cycle-Accurate Game Boy Docs.pdf` - Hardware reference (in project root)
 - Pan Docs: https://gbdev.io/pandocs/ - Comprehensive Game Boy documentation
 

@@ -54,6 +54,38 @@ impl Cpu {
             0x4C => self.ld_c_h(),
             0x4D => self.ld_c_l(),
 
+            0x57 => self.ld_d_a(),
+            0x50 => self.ld_d_b(),
+            0x51 => self.ld_d_c(),
+            0x52 => self.ld_d_d(),
+            0x53 => self.ld_d_e(),
+            0x54 => self.ld_d_h(),
+            0x55 => self.ld_d_l(),
+
+            0x5F => self.ld_e_a(),
+            0x58 => self.ld_e_b(),
+            0x59 => self.ld_e_c(),
+            0x5A => self.ld_e_d(),
+            0x5B => self.ld_e_e(),
+            0x5C => self.ld_e_h(),
+            0x5D => self.ld_e_l(),
+
+            0x67 => self.ld_h_a(),
+            0x60 => self.ld_h_b(),
+            0x61 => self.ld_h_c(),
+            0x62 => self.ld_h_d(),
+            0x63 => self.ld_h_e(),
+            0x64 => self.ld_h_h(),
+            0x65 => self.ld_h_l(),
+
+            0x6F => self.ld_l_a(),
+            0x68 => self.ld_l_b(),
+            0x69 => self.ld_l_c(),
+            0x6A => self.ld_l_d(),
+            0x6B => self.ld_l_e(),
+            0x6C => self.ld_l_h(),
+            0x6D => self.ld_l_l(),
+
             // LD r, n (8-bit immediate to register)
             0x3E => self.ld_a_n(memory),
             0x06 => self.ld_b_n(memory),

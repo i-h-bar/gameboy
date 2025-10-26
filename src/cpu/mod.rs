@@ -119,6 +119,118 @@ impl Cpu {
         4
     }
 
+    fn ld_d_a(&mut self) -> u8 {
+        self.registers.d = self.registers.a;
+        4
+    }
+    fn ld_d_b(&mut self) -> u8 {
+        self.registers.d = self.registers.b;
+        4
+    }
+    fn ld_d_c(&mut self) -> u8 {
+        self.registers.d = self.registers.c;
+        4
+    }
+    fn ld_d_d(&mut self) -> u8 {
+        4
+    }
+    fn ld_d_e(&mut self) -> u8 {
+        self.registers.d = self.registers.e;
+        4
+    }
+    fn ld_d_h(&mut self) -> u8 {
+        self.registers.d = self.registers.h;
+        4
+    }
+    fn ld_d_l(&mut self) -> u8 {
+        self.registers.d = self.registers.l;
+        4
+    }
+
+    fn ld_e_a(&mut self) -> u8 {
+        self.registers.e = self.registers.a;
+        4
+    }
+    fn ld_e_b(&mut self) -> u8 {
+        self.registers.e = self.registers.b;
+        4
+    }
+    fn ld_e_c(&mut self) -> u8 {
+        self.registers.e = self.registers.c;
+        4
+    }
+    fn ld_e_d(&mut self) -> u8 {
+        self.registers.e = self.registers.d;
+        4
+    }
+    fn ld_e_e(&mut self) -> u8 {
+        4
+    }
+    fn ld_e_h(&mut self) -> u8 {
+        self.registers.e = self.registers.h;
+        4
+    }
+    fn ld_e_l(&mut self) -> u8 {
+        self.registers.e = self.registers.l;
+        4
+    }
+
+    fn ld_h_a(&mut self) -> u8 {
+        self.registers.h = self.registers.a;
+        4
+    }
+    fn ld_h_b(&mut self) -> u8 {
+        self.registers.h = self.registers.b;
+        4
+    }
+    fn ld_h_c(&mut self) -> u8 {
+        self.registers.h = self.registers.c;
+        4
+    }
+    fn ld_h_d(&mut self) -> u8 {
+        self.registers.h = self.registers.d;
+        4
+    }
+    fn ld_h_e(&mut self) -> u8 {
+        self.registers.h = self.registers.e;
+        4
+    }
+    fn ld_h_h(&mut self) -> u8 {
+        4
+    }
+    fn ld_h_l(&mut self) -> u8 {
+        self.registers.h = self.registers.l;
+        4
+    }
+
+    fn ld_l_a(&mut self) -> u8 {
+        self.registers.l = self.registers.a;
+        4
+    }
+    fn ld_l_b(&mut self) -> u8 {
+        self.registers.l = self.registers.b;
+        4
+    }
+    fn ld_l_c(&mut self) -> u8 {
+        self.registers.l = self.registers.c;
+        4
+    }
+    fn ld_l_d(&mut self) -> u8 {
+        self.registers.l = self.registers.d;
+        4
+    }
+    fn ld_l_e(&mut self) -> u8 {
+        self.registers.l = self.registers.e;
+        4
+    }
+    fn ld_l_h(&mut self) -> u8 {
+        self.registers.l = self.registers.h;
+        4
+    }
+    fn ld_l_l(&mut self) -> u8 {
+        4
+    }
+
     // LD r, n - Load immediate 8-bit value (8 cycles each)
     fn ld_a_n(&mut self, memory: &Memory) -> u8 {
         self.registers.a = self.fetch_byte(memory);
